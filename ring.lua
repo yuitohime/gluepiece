@@ -1,12 +1,172 @@
---[[
- .____                  ________ ___.    _____                           __                
- |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
- |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
- |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
- |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
-         \/          \/         \/    \/                \/     \/     \/                   
-          \_Welcome to LuaObfuscator.com   (Alpha 0.10.9) ~  Much Love, Ferib 
+-- =========================================================================
+-- AUTO COLLECT SAFE BOX - MENU TÁCH BIỆT
+-- =========================================================================
 
-]]--
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = (gethui and pcall(gethui) and gethui()) or game:GetService("CoreGui")
+local player = Players.LocalPlayer
 
-local v0=game:GetService("Players");local v1=game:GetService("Workspace");local v2=game:GetService("UserInputService");local v3=(gethui and pcall(gethui) and gethui()) or game:GetService("CoreGui") ;local v4=v0.LocalPlayer;if  not pcall(function() local v55=v3.Name;end) then v3=v4:WaitForChild("PlayerGui");end for v56,v57 in pairs(v3:GetChildren()) do if (v57.Name=="AutoRings_Menu") then v57:Destroy();end end _G.AutoRings=false;local v5=Instance.new("ScreenGui");v5.Name="AutoRings_Menu";v5.Parent=v3;v5.ResetOnSpawn=false;local v9=Instance.new("Frame",v5);v9.Size=UDim2.new(0,220,0,120);v9.Position=UDim2.new(0.5, -110,0.2,0);v9.BackgroundColor3=Color3.fromRGB(20,20,20);v9.Active=true;v9.BorderSizePixel=0;Instance.new("UICorner",v9).CornerRadius=UDim.new(0,8);Instance.new("UIStroke",v9).Color=Color3.fromRGB(0,255,150);local v17=Instance.new("Frame",v9);v17.Size=UDim2.new(1,0,0,30);v17.BackgroundColor3=Color3.fromRGB(30,30,30);v17.Active=true;Instance.new("UICorner",v17).CornerRadius=UDim.new(0,8);local v22=Instance.new("TextLabel",v17);v22.Size=UDim2.new(1, -30,1,0);v22.Position=UDim2.new(0,10,0,0);v22.BackgroundTransparency=1;v22.Text="AUTO NHẶT RINGS";v22.TextColor3=Color3.fromRGB(0,255,150);v22.Font=Enum.Font.GothamBold;v22.TextSize=12;v22.TextXAlignment=Enum.TextXAlignment.Left;local v33=Instance.new("TextButton",v17);v33.Size=UDim2.new(0,30,0,30);v33.Position=UDim2.new(1, -30,0,0);v33.BackgroundTransparency=1;v33.Text="X";v33.TextColor3=Color3.fromRGB(255,75,75);v33.Font=Enum.Font.GothamBold;v33.TextSize=13;v33.Activated:Connect(function() _G.AutoRings=false;v5:Destroy();end);local v41,v42,v43,v44;v17.InputBegan:Connect(function(v58) if ((v58.UserInputType==Enum.UserInputType.MouseButton1) or (v58.UserInputType==Enum.UserInputType.Touch)) then v41=true;v43=v58.Position;v44=v9.Position;v58.Changed:Connect(function() if (v58.UserInputState==Enum.UserInputState.End) then v41=false;end end);end end);v17.InputChanged:Connect(function(v59) if ((v59.UserInputType==Enum.UserInputType.MouseMovement) or (v59.UserInputType==Enum.UserInputType.Touch)) then v42=v59;end end);v2.InputChanged:Connect(function(v60) if ((v60==v42) and v41) then local v70=v60.Position-v43 ;v9.Position=UDim2.new(v44.X.Scale,v44.X.Offset + v70.X ,v44.Y.Scale,v44.Y.Offset + v70.Y );end end);local v45=Instance.new("TextButton",v9);v45.Size=UDim2.new(0.9,0,0,35);v45.Position=UDim2.new(0.05,0,0,55);v45.BackgroundColor3=Color3.fromRGB(40,40,40);v45.Text="Auto Rayleigh Rings [OFF]";v45.TextColor3=Color3.fromRGB(255,255,255);v45.Font=Enum.Font.GothamBold;v45.TextSize=12;Instance.new("UICorner",v45).CornerRadius=UDim.new(0,6);v45.Activated:Connect(function() _G.AutoRings= not _G.AutoRings;if _G.AutoRings then v45.BackgroundColor3=Color3.fromRGB(0,200,100);v45.Text="Auto Rayleigh Rings [ON]";else v45.BackgroundColor3=Color3.fromRGB(40,40,40);v45.Text="Auto Rayleigh Rings [OFF]";end end);local function v54() local v61={};for v62,v63 in pairs(v1:GetDescendants()) do if (v63.Name=="MapFolder") then local v76=v63:FindFirstChild("Rings");if v76 then for v79,v80 in pairs(v76:GetChildren()) do if (v80:IsA("BasePart") and string.find(v80.Name,"Rayleigh Ring")) then table.insert(v61,v80);end end end break;end end table.sort(v61,function(v64,v65) local v66=tonumber(string.match(v64.Name,"%d+")) or 0 ;local v67=tonumber(string.match(v65.Name,"%d+")) or 0 ;return v66<v67 ;end);return v61;end task.spawn(function() while task.wait(0.1) do if _G.AutoRings then local v77=v4.Character and v4.Character:FindFirstChild("HumanoidRootPart") ;if  not v77 then continue;end local v78=v54();if ( #v78>0) then for v81,v82 in ipairs(v78) do if ( not _G.AutoRings or  not v4.Character:FindFirstChild("HumanoidRootPart")) then break;end v77.CFrame=v82.CFrame;task.wait(0.5);end end end end end);
+-- Xóa GUI cũ nếu có để không bị đè lên nhau
+if not pcall(function() local _ = CoreGui.Name end) then CoreGui = player:WaitForChild("PlayerGui") end
+for _, gui in pairs(CoreGui:GetChildren()) do 
+    if gui.Name == "AutoBox_Menu" then gui:Destroy() end 
+end
+
+-- Biến Global
+_G.AutoBox = false
+_G.BoxDelay = 0.3 -- Thời gian trễ giữa mỗi lần bay đến Box (0.3s là an toàn)
+
+-- ============================
+-- 1. HÀM CẢM ỨNG CHUẨN MOBILE
+-- ============================
+local function BindTap(element, callback)
+    local debounce = false
+    element.Activated:Connect(function()
+        if not debounce then
+            debounce = true callback() task.wait(0.1) debounce = false
+        end
+    end)
+end
+
+-- ============================
+-- 2. TẠO MENU UI
+-- ============================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutoBox_Menu"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 220, 0, 120)
+MainFrame.Position = UDim2.new(0.5, -110, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Active = true
+MainFrame.BorderSizePixel = 0
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 170, 0)
+
+-- HEADER
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 30)
+Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30) 
+Header.Active = true
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -30, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "AUTO NHẶT BOX"
+Title.TextColor3 = Color3.fromRGB(255, 170, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 12
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton", Header)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 13
+
+-- Đóng GUI
+BindTap(CloseBtn, function()
+    _G.AutoBox = false
+    ScreenGui:Destroy()
+end)
+
+-- THUẬT TOÁN KÉO THẢ MƯỢT MÀ
+local dragging, dragInput, dragStart, startPos
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true dragStart = input.Position startPos = MainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+Header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then 
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- NÚT BẬT/TẮT AUTO
+local ToggleBtn = Instance.new("TextButton", MainFrame)
+ToggleBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0, 55)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleBtn.Text = "Auto SafeBox [OFF]"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 12
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+
+BindTap(ToggleBtn, function()
+    _G.AutoBox = not _G.AutoBox
+    if _G.AutoBox then
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+        ToggleBtn.Text = "Auto SafeBox [ON]"
+    else
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        ToggleBtn.Text = "Auto SafeBox [OFF]"
+    end
+end)
+
+-- ============================
+-- 3. HÀM TÌM BOX
+-- ============================
+local function GetSafeBoxes()
+    local boxes = {}
+    -- Quét toàn bộ map tìm "SpawnBox"
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj.Name == "SpawnBox" then
+            -- Lấy tất cả "SafeBoxWall" bên trong SpawnBox
+            for _, child in pairs(obj:GetChildren()) do
+                if child.Name == "SafeBoxWall" and child:IsA("BasePart") then
+                    table.insert(boxes, child)
+                end
+            end
+        end
+    end
+    return boxes
+end
+
+-- ============================
+-- 4. VÒNG LẶP AUTO NHẶT BOX
+-- ============================
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.AutoBox then
+            local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not rootPart then continue end
+
+            local boxes = GetSafeBoxes()
+            
+            -- Nếu có Box trên bản đồ, bắt đầu đi nhặt
+            if #boxes > 0 then
+                for i, box in ipairs(boxes) do
+                    -- Nếu người dùng tắt Auto hoặc nhân vật chết thì dừng lại ngay
+                    if not _G.AutoBox or not player.Character:FindFirstChild("HumanoidRootPart") then 
+                        break 
+                    end
+                    
+                    -- Kiểm tra xem box còn tồn tại trong game không (tránh lỗi khi box vừa bị người khác ăn)
+                    if box and box.Parent then
+                        -- Bay thẳng tới tọa độ của Box
+                        rootPart.CFrame = box.CFrame
+                        
+                        -- Chờ một khoảng nhỏ để server xác nhận nhân vật đã chạm vào box
+                        task.wait(_G.BoxDelay)
+                    end
+                end
+            end
+        end
+    end
+end)
