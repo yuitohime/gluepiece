@@ -1,263 +1,113 @@
--- =========================================================================
--- FAST ATTACK (ĐÁNH NHANH) - MENU TÁCH BIỆT
--- =========================================================================
-
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
+-- =======================================================
+-- MÀN HÌNH BẮT ATTACK ĐỘC LẬP (CHỐNG SPAM LOG)
+-- =======================================================
 local CoreGui = (gethui and pcall(gethui) and gethui()) or game:GetService("CoreGui")
-local player = Players.LocalPlayer
+if CoreGui:FindFirstChild("AttackSpyGUI") then CoreGui.AttackSpyGUI:Destroy() end
 
--- Xóa GUI cũ nếu có
-if not pcall(function() local _ = CoreGui.Name end) then CoreGui = player:WaitForChild("PlayerGui") end
-for _, gui in pairs(CoreGui:GetChildren()) do 
-    if gui.Name == "AutoAttack_Menu" then gui:Destroy() end 
-end
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "AttackSpyGUI"
+sg.ResetOnSpawn = false
 
--- ============================
--- BIẾN GLOBAL
--- ============================
-_G.AutoAttack = false
-_G.AutoEquip = true  -- Mặc định tự động cầm vũ khí
-_G.AttackDelay = 10  -- Đơn vị mili-giây (ms). 10ms = 0.01 giây (Cực nhanh)
+local frame = Instance.new("Frame", sg)
+frame.Size = UDim2.new(0, 320, 0, 250)
+frame.Position = UDim2.new(0.5, -160, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.Active = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", frame).Color = Color3.fromRGB(255, 50, 50)
 
--- ============================
--- HÀM CẢM ỨNG
--- ============================
-local function BindTap(element, callback)
-    local debounce = false
-    element.Activated:Connect(function()
-        if not debounce then
-            debounce = true callback() task.wait(0.1) debounce = false
-        end
-    end)
-end
+-- Tiêu đề & Kéo thả
+local header = Instance.new("Frame", frame)
+header.Size = UDim2.new(1, 0, 0, 30)
+header.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
 
--- ============================
--- TẠO MENU UI
--- ============================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AutoAttack_Menu"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
+local headerCover = Instance.new("Frame", header)
+headerCover.Size = UDim2.new(1, 0, 0, 5)
+headerCover.Position = UDim2.new(0, 0, 1, -5)
+headerCover.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+headerCover.BorderSizePixel = 0
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 220, 0, 160)
-MainFrame.Position = UDim2.new(0.5, 120, 0.2, 0) -- Đặt lệch sang phải một chút để không đè lên menu khác
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.Active = true
-MainFrame.BorderSizePixel = 0
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 50, 50)
+local title = Instance.new("TextLabel", header)
+title.Size = UDim2.new(1, 0, 1, 0)
+title.BackgroundTransparency = 1
+title.Text = " 🎯 BẢNG BẮT ATTACK (KÉO ĐỂ DI CHUYỂN)"
+title.TextColor3 = Color3.fromRGB(255, 100, 100)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 12
 
--- HEADER
-local Header = Instance.new("Frame", MainFrame)
-Header.Size = UDim2.new(1, 0, 0, 30)
-Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30) 
-Header.Active = true
-Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
-
-local HeaderCover = Instance.new("Frame", Header)
-HeaderCover.Size = UDim2.new(1, 0, 0, 5)
-HeaderCover.Position = UDim2.new(0, 0, 1, -5)
-HeaderCover.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-HeaderCover.BorderSizePixel = 0
-
-local Title = Instance.new("TextLabel", Header)
-Title.Size = UDim2.new(1, -30, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "FAST ATTACK PRO"
-Title.TextColor3 = Color3.fromRGB(255, 50, 50)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local CloseBtn = Instance.new("TextButton", Header)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-CloseBtn.BackgroundTransparency = 1
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 75, 75)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 13
-
-BindTap(CloseBtn, function()
-    _G.AutoAttack = false
-    ScreenGui:Destroy()
-end)
-
--- KÉO THẢ
+-- Logic Kéo thả
 local dragging, dragInput, dragStart, startPos
-Header.InputBegan:Connect(function(input)
+header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true dragStart = input.Position startPos = MainFrame.Position
+        dragging = true dragStart = input.Position startPos = frame.Position
         input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-Header.InputChanged:Connect(function(input)
+header.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
-UserInputService.InputChanged:Connect(function(input)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
     if input == dragInput and dragging then 
         local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
-local ContentFrame = Instance.new("Frame", MainFrame)
-ContentFrame.Size = UDim2.new(1, 0, 1, -30)
-ContentFrame.Position = UDim2.new(0, 0, 0, 30)
-ContentFrame.BackgroundTransparency = 1
+-- Khung chứa văn bản
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, -10, 1, -40)
+scroll.Position = UDim2.new(0, 5, 0, 35)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+scroll.ScrollBarThickness = 4
+scroll.BorderSizePixel = 0
 
-local Layout = Instance.new("UIListLayout", ContentFrame)
-Layout.Padding = UDim.new(0, 6)
-Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local list = Instance.new("UIListLayout", scroll)
+list.Padding = UDim.new(0, 8)
 
-local spacer = Instance.new("Frame", ContentFrame) spacer.Size = UDim2.new(1,0,0,1) spacer.BackgroundTransparency = 1
-
--- ============================
--- THANH KÉO TỐC ĐỘ (SLIDER)
--- ============================
-local SliderFrame = Instance.new("Frame", ContentFrame)
-SliderFrame.Size = UDim2.new(0.9, 0, 0, 35)
-SliderFrame.BackgroundTransparency = 1
-
-local DelayLabel = Instance.new("TextLabel", SliderFrame)
-DelayLabel.Size = UDim2.new(1, 0, 0, 15)
-DelayLabel.BackgroundTransparency = 1
-DelayLabel.Text = "Tốc độ chém: " .. _G.AttackDelay .. " ms"
-DelayLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-DelayLabel.Font = Enum.Font.GothamBold
-DelayLabel.TextSize = 10
-DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local SliderBg = Instance.new("Frame", SliderFrame)
-SliderBg.Size = UDim2.new(1, 0, 0, 14)
-SliderBg.Position = UDim2.new(0, 0, 0, 18)
-SliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(0, 4)
-
-local SliderFill = Instance.new("Frame", SliderBg)
-local maxMs = 500
-local pct = _G.AttackDelay / maxMs
-SliderFill.Size = UDim2.new(pct, 0, 1, 0)
-SliderFill.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(0, 4)
-
-local isDragging = false
-SliderBg.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = true
-    end
-end)
-
-local function UpdateSlider(input)
-    local posX = math.clamp(input.Position.X - SliderBg.AbsolutePosition.X, 0, SliderBg.AbsoluteSize.X)
-    local percent = posX / SliderBg.AbsoluteSize.X
-    -- Căn chỉnh từ 0 ms (nhanh nhất) đến 500 ms (chậm)
-    _G.AttackDelay = math.floor(percent * maxMs)
-    SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-    DelayLabel.Text = "Tốc độ chém: " .. _G.AttackDelay .. " ms"
+-- Hàm in chữ ra màn hình mini
+local function logMsg(txt)
+    local l = Instance.new("TextLabel", scroll)
+    l.Size = UDim2.new(1, -5, 0, 0)
+    l.AutomaticSize = Enum.AutomaticSize.Y
+    l.TextWrapped = true
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Text = txt
+    l.TextColor3 = Color3.fromRGB(0, 255, 150)
+    l.Font = Enum.Font.Code
+    l.TextSize = 11
+    l.BackgroundTransparency = 1
 end
 
-UserInputService.InputChanged:Connect(function(input)
-    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        UpdateSlider(input)
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = false
-    end
-end)
+logMsg("Đang chờ bạn bấm chém/dùng chiêu...")
 
--- ============================
--- NÚT TỰ ĐỘNG CẦM VŨ KHÍ
--- ============================
-local EquipToggle = Instance.new("TextButton", ContentFrame)
-EquipToggle.Size = UDim2.new(0.9, 0, 0, 25)
-EquipToggle.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
-EquipToggle.Text = "Tự động rút vũ khí [ON]"
-EquipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-EquipToggle.Font = Enum.Font.GothamBold
-EquipToggle.TextSize = 11
-Instance.new("UICorner", EquipToggle).CornerRadius = UDim.new(0, 4)
+-- BỘ LỌC BẮT SÓNG LỆNH CHÉM
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
 
-BindTap(EquipToggle, function()
-    _G.AutoEquip = not _G.AutoEquip
-    if _G.AutoEquip then
-        EquipToggle.BackgroundColor3 = Color3.fromRGB(255, 120, 0)
-        EquipToggle.Text = "Tự động rút vũ khí [ON]"
-    else
-        EquipToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        EquipToggle.Text = "Tự động rút vũ khí [OFF]"
-    end
-end)
-
--- ============================
--- NÚT BẬT/TẮT AUTO ĐÁNH
--- ============================
-local AttackToggle = Instance.new("TextButton", ContentFrame)
-AttackToggle.Size = UDim2.new(0.9, 0, 0, 30)
-AttackToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-AttackToggle.Text = "AUTO ATTACK [OFF]"
-AttackToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AttackToggle.Font = Enum.Font.GothamBold
-AttackToggle.TextSize = 12
-Instance.new("UICorner", AttackToggle).CornerRadius = UDim.new(0, 4)
-local AttackStroke = Instance.new("UIStroke", AttackToggle)
-AttackStroke.Color = Color3.fromRGB(255, 50, 50)
-AttackStroke.Thickness = 1
-
-BindTap(AttackToggle, function()
-    _G.AutoAttack = not _G.AutoAttack
-    if _G.AutoAttack then
-        AttackToggle.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        AttackToggle.Text = "AUTO ATTACK [ON]"
-    else
-        AttackToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        AttackToggle.Text = "AUTO ATTACK [OFF]"
-    end
-end)
-
--- ============================
--- VÒNG LẶP XỬ LÝ AUTO ATTACK
--- ============================
-task.spawn(function()
-    while true do
-        -- Đợi theo mili-giây (chia cho 1000 để ra giây)
-        -- Dùng RunService.Heartbeat:Wait() nếu delay = 0 để đạt tốc độ khung hình
-        if _G.AttackDelay <= 0 then
-            game:GetService("RunService").Heartbeat:Wait()
-        else
-            task.wait(_G.AttackDelay / 1000)
-        end
-
-        if _G.AutoAttack and player.Character then
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                
-                -- Tìm xem nhân vật đang cầm Tool (vũ khí) nào không
-                local equippedTool = player.Character:FindFirstChildOfClass("Tool")
-                
-                -- Nếu tính năng tự rút vũ khí bật và chưa cầm gì
-                if not equippedTool and _G.AutoEquip then
-                    local backpack = player:FindFirstChild("Backpack")
-                    if backpack then
-                        local tool = backpack:FindFirstChildOfClass("Tool")
-                        if tool then
-                            humanoid:EquipTool(tool)
-                            equippedTool = tool
-                        end
-                    end
-                end
-
-                -- Thực hiện hành động chém
-                if equippedTool then
-                    equippedTool:Activate()
-                end
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if method == "FireServer" or method == "InvokeServer" then
+        local name = string.lower(tostring(self.Name))
+        -- Chỉ bắt đúng các từ khóa liên quan tới tấn công
+        if name:match("attack") or name:match("combat") or name:match("hit") or name:match("damage") or name:match("melee") then
+            local path = self:GetFullName()
+            local args = {...}
+            local argStr = ""
+            for i, v in ipairs(args) do
+                argStr = argStr .. "   ["..i.."] = " .. tostring(v) .. "\n"
             end
+            
+            local finalTxt = "🔥 TÊN: " .. self.Name .. "\n📂 ĐƯỜNG DẪN:\n" .. path .. "\n⚙️ THAM SỐ (ARGS):\n" .. (argStr == "" and "   (Không có tham số)" or argStr) .. "-----------------------"
+            
+            -- Đẩy lên màn hình mini
+            task.spawn(function() logMsg(finalTxt) end)
         end
     end
+    return oldNamecall(self, ...)
 end)
+setreadonly(mt, true)
