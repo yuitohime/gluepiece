@@ -1,5 +1,5 @@
 -- ==========================================
--- GLUE PIECE - YUI HUB V13 (FIX CHẾT, FARM QUÁI & COMBO VŨ KHÍ TRÁI)
+-- GLUE PIECE - YUI HUB V14 (FIX CHẾT + AUTO KIẾM KIRITO)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,7 +8,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-local guiName = "GluePiece_YuiStyle_V13"
+local guiName = "GluePiece_YuiStyle_V14"
 local CoreGui = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LocalPlayer.PlayerGui
 
 if CoreGui:FindFirstChild(guiName) then CoreGui[guiName]:Destroy() end
@@ -29,8 +29,10 @@ _G.AutoKyo = false
 _G.AutoSkill = false
 _G.AutoAttack = false
 _G.AutoWeapon = false
-_G.AutoSwitchWeaponFruit = false -- Combo Đổi vũ khí & trái ác quỷ
-_G.SwitchDelay = 3 -- Delay đổi
+_G.AutoSwitchWeaponFruit = false 
+_G.SwitchDelay = 3 
+
+_G.AutoKirito = false -- Tính năng mới: Lấy Dual Sword
 
 _G.ESPItem = false
 _G.ESPBoss = false
@@ -73,7 +75,6 @@ local ScreenGui = Instance.new("ScreenGui", CoreGui)
 ScreenGui.Name = guiName
 ScreenGui.ResetOnSpawn = false
 
--- NÚT MỞ UI
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.Size = UDim2.new(0, 40, 0, 40)
 OpenBtn.Position = UDim2.new(0, 10, 0.5, -20)
@@ -88,7 +89,6 @@ OpenBtn.Draggable = true
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 8)
 Instance.new("UIStroke", OpenBtn).Color = Colors.Green
 
--- KHUNG CHÍNH 
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0, 480, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -240, 0.5, -140)
@@ -96,7 +96,6 @@ MainFrame.BackgroundColor3 = Colors.BG
 MainFrame.Active = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
--- TOPBAR
 local TopBar = Instance.new("Frame", MainFrame)
 TopBar.Size = UDim2.new(1, 0, 0, 30)
 TopBar.BackgroundTransparency = 1
@@ -129,7 +128,7 @@ local TitleBot = Instance.new("TextLabel", TopBar)
 TitleBot.Size = UDim2.new(0, 200, 0, 20)
 TitleBot.Position = UDim2.new(0, 20, 0.5, -10)
 TitleBot.BackgroundTransparency = 1
-TitleBot.Text = "Glue Piece V13 - Final"
+TitleBot.Text = "Glue Piece V14 - Fixed"
 TitleBot.TextColor3 = Colors.Green
 TitleBot.Font = Enum.Font.GothamBold
 TitleBot.TextSize = 13
@@ -477,7 +476,7 @@ CreateSlider(SecSplit, "Đổi mục tiêu sau (Giây):", 1, 10, "SplitTime")
 
 local SecMove = CreateSection(TabSetting, "Di Chuyển")
 CreateDropdown(SecMove, "Cách Bay Đến Quái", MoveList, "MoveMethod", false)
-CreateSlider(SecMove, "Tốc Độ Bay:", 100, 2000, "FlySpeed") -- ĐÃ NÂNG LÊN 2000
+CreateSlider(SecMove, "Tốc Độ Bay:", 100, 2000, "FlySpeed")
 
 local SecSet = CreateSection(TabSetting, "Góc Đánh")
 CreateToggle(SecSet, "Đánh Thụ Động (Tool:Activate)", "AutoAttack")
@@ -490,6 +489,10 @@ CreateSlider(SecSafe, "Phần trăm máu (%) bỏ chạy:", 10, 90, "SafeHP")
 
 -- TAB 4: SKILL & VŨ KHÍ 
 local TabSkill = CreateTab("Vũ Khí & Skill")
+
+local SecSpecialWep = CreateSection(TabSkill, "Vũ Khí Đặc Biệt (Từ Shop)")
+CreateToggle(SecSpecialWep, "Auto Lấy Kiếm Kirito (Dual Sword)", "AutoKirito")
+
 local SecWeap = CreateSection(TabSkill, "Sử Dụng Vũ Khí")
 local UpdateWeaponMenu = CreateDropdown(SecWeap, "Vũ Khí Trong Túi", {"Chưa quét"}, "SelectedWeapons", true)
 CreateButton(SecWeap, "🔄 Quét Vũ Khí", function()
@@ -578,7 +581,7 @@ end)
 
 
 -- ==========================================
--- 5. LOGIC DI CHUYỂN, ĐỔI VŨ KHÍ & ĐÁNH
+-- 5. LOGIC DI CHUYỂN AN TOÀN (ANTI-WATER) & ĐÁNH
 -- ==========================================
 local function PreventFalling(hrp)
     if not hrp:FindFirstChild("AntiFall_Yui") then
@@ -630,33 +633,30 @@ local function GetStrictTarget()
     if _G.IsHealing then return nil end
     if _G.AutoKyo then for _, obj in pairs(workspace:GetDescendants()) do if obj.Name == "Kyo" and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then return obj end end return nil end
 
-    local bossTargets = {}
+    local validTargets = {}
     for bName, isSelected in pairs(_G.FarmBosses) do
         if isSelected then
-            for _, obj in pairs(workspace:GetDescendants()) do if obj.Name == bName and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then table.insert(bossTargets, obj) end end
+            for _, obj in pairs(workspace:GetDescendants()) do if obj.Name == bName and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then table.insert(validTargets, obj) end end
         end
     end
     
     local isBossEnabled = false for _, v in pairs(_G.FarmBosses) do if v then isBossEnabled = true break end end
     if isBossEnabled then
-        if #bossTargets > 0 then
-            if _G.SplitDamage then lastTargetIndex = lastTargetIndex + 1 if lastTargetIndex > #bossTargets then lastTargetIndex = 1 end return bossTargets[lastTargetIndex]
-            else return bossTargets[1] end
-        else 
-            if not _G.AutoFarm then return nil end -- Đứng chờ Boss nếu tắt AutoFarm
-        end
+        if #validTargets > 0 then
+            if _G.SplitDamage then lastTargetIndex = lastTargetIndex + 1 if lastTargetIndex > #validTargets then lastTargetIndex = 1 end return validTargets[lastTargetIndex]
+            else return validTargets[1] end
+        else return nil end
     end
 
     if _G.AutoFarm then
-        local mobTargets = {}
         for mName, isSelected in pairs(_G.FarmMobs) do
             if isSelected then
-                for _, obj in pairs(workspace:GetDescendants()) do if obj.Name == mName and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then table.insert(mobTargets, obj) end end
+                for _, obj in pairs(workspace:GetDescendants()) do if obj.Name == mName and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then table.insert(validTargets, obj) end end
             end
         end
-        if #mobTargets > 0 then
-            if _G.SplitDamage then lastTargetIndex = lastTargetIndex + 1 if lastTargetIndex > #mobTargets then lastTargetIndex = 1 end return mobTargets[lastTargetIndex]
-            else return mobTargets[1] end
+        if #validTargets > 0 then
+            if _G.SplitDamage then lastTargetIndex = lastTargetIndex + 1 if lastTargetIndex > #validTargets then lastTargetIndex = 1 end return validTargets[lastTargetIndex]
+            else return validTargets[1] end
         end
     end
     return nil
@@ -691,13 +691,11 @@ task.spawn(function()
         if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then task.wait(1) continue end
 
         if _G.AutoSwitchWeaponFruit then
-            -- BƯỚC 1: CẦM VŨ KHÍ 
             for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
                 if tool:IsA("Tool") and _G.SelectedWeapons[tool.Name] then tool.Parent = char end
             end
             task.wait(_G.SwitchDelay)
             
-            -- BƯỚC 2: CẤT TẤT CẢ (Để tay không = Trái Ác Quỷ)
             char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
                 for _, tool in pairs(char:GetChildren()) do
@@ -706,7 +704,6 @@ task.spawn(function()
             end
             task.wait(_G.SwitchDelay)
         else
-            -- NẾU TẮT COMBO MÀ BẬT AUTO CẦM VŨ KHÍ BÌNH THƯỜNG
             if _G.AutoWeapon then
                 for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if tool:IsA("Tool") and _G.SelectedWeapons[tool.Name] then tool.Parent = char end
@@ -719,7 +716,7 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP DI CHUYỂN & ĐÁNH
+-- VÒNG LẶP DI CHUYỂN VÀ ĐÁNH (ĐÃ FIX LỖI CHẾT KHÔNG ĐÁNH)
 task.spawn(function()
     while task.wait() do
         local char = LocalPlayer.Character
@@ -734,18 +731,25 @@ task.spawn(function()
             if targetMob then
                 local attackStartTime = tick()
                 while targetMob and targetMob:FindFirstChild("Humanoid") and targetMob.Humanoid.Health > 0 do
+                    -- FIX QUAN TRỌNG NHẤT: Bắt buộc thoát vòng lặp nếu nhân vật vừa chết
+                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
+                        break
+                    end
+
                     if _G.SplitDamage and (tick() - attackStartTime) >= _G.SplitTime then break end
                     if _G.IsHealing and not _G.AutoDuck then break end
                     if not IsFarmingEnabled() then break end
                     
                     pcall(function()
-                        local dest = GetOffsetCFrame(targetMob.HumanoidRootPart.CFrame)
-                        PreventFalling(hrp)
-                        MoveToSafe(hrp, dest)
-                        
-                        -- Chém tay (Bất kể đang cầm vũ khí gì)
-                        if _G.AutoAttack then
-                            for _, tool in pairs(char:GetChildren()) do if tool:IsA("Tool") then tool:Activate() end end
+                        local currentHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if currentHrp then
+                            local dest = GetOffsetCFrame(targetMob.HumanoidRootPart.CFrame)
+                            PreventFalling(currentHrp)
+                            MoveToSafe(currentHrp, dest)
+                            
+                            if _G.AutoAttack then
+                                for _, tool in pairs(LocalPlayer.Character:GetChildren()) do if tool:IsA("Tool") then tool:Activate() end end
+                            end
                         end
                     end)
                     task.wait(0.05)
@@ -770,6 +774,20 @@ task.spawn(function()
                     end)
                 end
             end
+        end
+    end
+end)
+
+-- VÒNG LẶP SPAM LẤY KIẾM KIRITO
+task.spawn(function()
+    while task.wait() do
+        if _G.AutoKirito then
+            pcall(function()
+                local clickDetector = workspace.Shop["Special Weapon"]["Dual Sword"]:FindFirstChildWhichIsA("Part", true).ClickDetector
+                if clickDetector then
+                    fireclickdetector(clickDetector)
+                end
+            end)
         end
     end
 end)
