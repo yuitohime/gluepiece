@@ -1,14 +1,14 @@
 -- ==========================================
--- GLUE PIECE - YUI HUB STYLE V3 (STRICT LOGIC)
+-- GLUE PIECE - YUI HUB STYLE V4 (FIXED DRAG & PASSIVE ATTACK)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-local guiName = "GluePiece_YuiStyle"
+local guiName = "GluePiece_YuiStyle_V4"
 local CoreGui = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LocalPlayer.PlayerGui
 
 if CoreGui:FindFirstChild(guiName) then CoreGui[guiName]:Destroy() end
@@ -31,49 +31,72 @@ _G.AutoAttack = false
 _G.AutoWeapon = false
 
 -- Định vị đánh
-_G.AtkPosition = "Trên Đầu" -- Trên Đầu, Sau Lưng, Dưới Chân, Trước Mặt
-_G.AtkDistance = 5 -- Khoảng cách stud
+_G.AtkPosition = "Trên Đầu"
+_G.AtkDistance = 5
 
 local MobsList = {"Slime", "Snake", "Thug", "Cutie Noob", "Elite Noob", "Evil Thug"}
 local BossesList = {"Cutie Boss", "King Noob", "Nooby", "Unknown Boss", "King Slime", "Duck Boss", "Kyo", "Sans", "Shinoa", "Sword Master"}
 local PosList = {"Trên Đầu", "Sau Lưng", "Dưới Chân", "Trước Mặt"}
 local SkillKeys = {"Q", "E", "R", "T", "F", "Z", "X", "C", "V"}
-local WeaponsList = {"Epic Sword", "Saber", "Triple Katana", "Dual Sword", "Combat", "Black Leg"}
 
 -- ==========================================
--- 2. UI THEME (DỰA TRÊN ẢNH YUI HUB)
+-- 2. UI THEME & DRAG LOGIC
 -- ==========================================
 local Colors = {
-    BG = Color3.fromRGB(15, 17, 26),        -- Nền app tối
-    Card = Color3.fromRGB(22, 25, 37),      -- Nền khung Section
-    Border = Color3.fromRGB(37, 41, 60),    -- Viền mờ
-    Text = Color3.fromRGB(230, 230, 230),   -- Chữ trắng xám
-    Green = Color3.fromRGB(0, 255, 136),    -- Xanh lá đặc trưng (Active/Toggle)
-    ToggleOff = Color3.fromRGB(255,255,255),-- Bi trắng
-    ToggleBgOff = Color3.fromRGB(40,45,60)  -- Rãnh tắt
+    BG = Color3.fromRGB(15, 17, 26),
+    Card = Color3.fromRGB(22, 25, 37),
+    Border = Color3.fromRGB(37, 41, 60),
+    Text = Color3.fromRGB(230, 230, 230),
+    Green = Color3.fromRGB(0, 255, 136),
+    ToggleOff = Color3.fromRGB(255,255,255),
+    ToggleBgOff = Color3.fromRGB(40,45,60)
 }
 
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
 ScreenGui.Name = guiName
+ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0, 680, 0, 420)
 MainFrame.Position = UDim2.new(0.5, -340, 0.5, -210)
 MainFrame.BackgroundColor3 = Colors.BG
 MainFrame.Active = true
-MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- Header (TopBar)
+-- Header (TopBar) - CHỈ CHO PHÉP KÉO Ở ĐÂY ĐỂ TRÁNH LỖI SCROLL
 local TopBar = Instance.new("Frame", MainFrame)
 TopBar.Size = UDim2.new(1, 0, 0, 50)
 TopBar.BackgroundTransparency = 1
+TopBar.Active = true
+
+-- LOGIC KÉO THẢ TÙY CHỈNH CHO TOPBAR
+local dragging, dragInput, dragStart, startPos
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+TopBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
 local GreenLine = Instance.new("Frame", TopBar)
 GreenLine.Size = UDim2.new(0, 3, 0, 24)
 GreenLine.Position = UDim2.new(0, 20, 0.5, -12)
 GreenLine.BackgroundColor3 = Colors.Green
-GreenLine.BorderSizePixel = 0
 Instance.new("UICorner", GreenLine).CornerRadius = UDim.new(1, 0)
 
 local TitleTop = Instance.new("TextLabel", TopBar)
@@ -90,7 +113,7 @@ local TitleBot = Instance.new("TextLabel", TopBar)
 TitleBot.Size = UDim2.new(0, 200, 0, 20)
 TitleBot.Position = UDim2.new(0, 30, 0.5, 0)
 TitleBot.BackgroundTransparency = 1
-TitleBot.Text = "Glue Piece V3"
+TitleBot.Text = "Glue Piece V4"
 TitleBot.TextColor3 = Colors.Green
 TitleBot.Font = Enum.Font.GothamBold
 TitleBot.TextSize = 18
@@ -106,7 +129,6 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 16
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Layout chia 2 cột
 local LeftPanel = Instance.new("ScrollingFrame", MainFrame)
 LeftPanel.Size = UDim2.new(0, 160, 1, -60)
 LeftPanel.Position = UDim2.new(0, 10, 0, 50)
@@ -121,10 +143,9 @@ RightPanel.Position = UDim2.new(0, 180, 0, 50)
 RightPanel.BackgroundTransparency = 1
 
 -- ==========================================
--- 3. UI COMPONENTS FACTORY
+-- 3. UI COMPONENTS
 -- ==========================================
-local Tabs = {}
-local TabButtons = {}
+local Tabs, TabButtons = {}, {}
 
 local function CreateTab(name)
     local TabBtn = Instance.new("TextButton", LeftPanel)
@@ -176,12 +197,9 @@ end
 
 local function CreateSection(parent, title)
     local Section = Instance.new("Frame", parent)
-    Section.Size = UDim2.new(1, -10, 0, 0)
     Section.BackgroundColor3 = Colors.Card
     Instance.new("UICorner", Section).CornerRadius = UDim.new(0, 8)
-    local Stroke = Instance.new("UIStroke", Section)
-    Stroke.Color = Colors.Border
-    Stroke.Thickness = 1
+    Instance.new("UIStroke", Section).Color = Colors.Border
 
     local Layout = Instance.new("UIListLayout", Section)
     Layout.Padding = UDim.new(0, 10)
@@ -389,6 +407,19 @@ local function CreateNote(parent, initialText)
     return Lbl
 end
 
+local function CreateButton(parent, text, callback)
+    local Btn = Instance.new("TextButton", parent)
+    Btn.Size = UDim2.new(1, -30, 0, 30)
+    Btn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+    Btn.Text = text
+    Btn.TextColor3 = Colors.Text
+    Btn.Font = Enum.Font.GothamBold
+    Btn.TextSize = 12
+    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+    Btn.MouseButton1Click:Connect(callback)
+    return Btn
+end
+
 -- ==========================================
 -- 4. BUILDING TABS & SECTIONS
 -- ==========================================
@@ -396,7 +427,7 @@ end
 -- TAB 1: SĂN BOSS & ĐỊNH VỊ
 local TabBoss = CreateTab("Săn Boss & Định Vị")
 local SecBossSet = CreateSection(TabBoss, "Cấu Hình Góc Đánh")
-CreateToggle(SecBossSet, "Tự Động Xuất Chiêu (Auto Click)", "AutoAttack")
+CreateToggle(SecBossSet, "Tự Động Đánh (Thụ Động - Không chiếm chuột)", "AutoAttack")
 CreateDropdown(SecBossSet, "Chọn Hướng Đứng (Góc Đánh)", PosList, "AtkPosition", false)
 CreateDistanceSlider(SecBossSet)
 
@@ -409,15 +440,12 @@ local SecSpecial = CreateSection(TabBoss, "Boss Ưu Tiên Cao")
 CreateToggle(SecSpecial, "🔥 Auto Săn Kyo (Cực VIP)", "AutoKyo")
 CreateToggle(SecSpecial, "🔥 Auto Săn Duck Boss", "AutoDuck")
 
--- VÒNG LẶP CẬP NHẬT LIVE BOSS GHI CHÚ
 task.spawn(function()
     while task.wait(1.5) do
         local alive = {}
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("Model") and table.find(BossesList, obj.Name) and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                if not table.find(alive, obj.Name) then
-                    table.insert(alive, "• " .. obj.Name)
-                end
+                if not table.find(alive, obj.Name) then table.insert(alive, "• " .. obj.Name) end
             end
         end
         if #alive > 0 then
@@ -438,10 +466,28 @@ CreateDropdown(SecFarm, "Danh Sách Quái Mobs", MobsList, "FarmMobs", true)
 CreateToggle(SecFarm, "Bật Auto Farm Mobs", "AutoFarm")
 
 
--- TAB 3: SKILL & VŨ KHÍ
+-- TAB 3: SKILL & VŨ KHÍ (QUÉT TÚI ĐỒ)
 local TabSkill = CreateTab("Vũ Khí & Kỹ Năng")
 local SecWeap = CreateSection(TabSkill, "Sử Dụng Vũ Khí")
-CreateDropdown(SecWeap, "Chọn Các Vũ Khí Cần Cầm", WeaponsList, "SelectedWeapons", true)
+
+-- Dropdown Rỗng lúc đầu, sẽ có Update Menu
+local UpdateWeaponMenu = CreateDropdown(SecWeap, "Vũ Khí Đang Có (Hãy Quét Trước)", {"Chưa quét"}, "SelectedWeapons", true)
+
+CreateButton(SecWeap, "🔄 Quét Vũ Khí Trong Túi", function()
+    local wpList = {}
+    for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if t:IsA("Tool") then table.insert(wpList, t.Name) end
+    end
+    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+        if t:IsA("Tool") then table.insert(wpList, t.Name) end
+    end
+    if #wpList == 0 then table.insert(wpList, "Không tìm thấy vũ khí") end
+    
+    -- Xóa dữ liệu cũ nếu quét lại
+    _G.SelectedWeapons = {} 
+    UpdateWeaponMenu(wpList)
+end)
+
 CreateToggle(SecWeap, "Auto Cầm Tất Cả Vũ Khí Đã Chọn", "AutoWeapon")
 
 local SecSkill = CreateSection(TabSkill, "Tự Động Kỹ Năng")
@@ -451,10 +497,10 @@ CreateToggle(SecSkill, "Bật Tự Động Xả Skill", "AutoSkill")
 
 -- TAB 4: ESP & TELEPORT
 local TabItems = CreateTab("Map Items & Teleport")
-local SecESP = CreateSection(TabItems, "Tìm Trái Ác Quỷ")
+local SecESP = CreateSection(TabItems, "Tìm Đồ Vật")
 local UpdateDropMenu = CreateDropdown(SecESP, "Danh Sách Vật Phẩm", {"Đang chờ..."}, "SelectedDrop", false)
 
-local function RefreshItems()
+CreateButton(SecESP, "Làm Mới Danh Sách Vật Phẩm", function()
     local drops = {}
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Tool") and obj.Parent ~= LocalPlayer.Character and obj.Parent ~= LocalPlayer.Backpack then
@@ -463,25 +509,9 @@ local function RefreshItems()
     end
     if #drops == 0 then table.insert(drops, "Không có đồ") end
     UpdateDropMenu(drops)
-end
+end)
 
-local TBtn = Instance.new("TextButton", SecESP)
-TBtn.Size = UDim2.new(1, -30, 0, 30)
-TBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
-TBtn.Text = "Làm Mới Danh Sách Teleport"
-TBtn.TextColor3 = Colors.Text
-TBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", TBtn).CornerRadius = UDim.new(0, 6)
-TBtn.MouseButton1Click:Connect(RefreshItems)
-
-local TeleBtn = Instance.new("TextButton", SecESP)
-TeleBtn.Size = UDim2.new(1, -30, 0, 30)
-TeleBtn.BackgroundColor3 = Colors.Green
-TeleBtn.Text = "Teleport Đến Món Đã Chọn"
-TeleBtn.TextColor3 = Colors.BG
-TeleBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", TeleBtn).CornerRadius = UDim.new(0, 6)
-TeleBtn.MouseButton1Click:Connect(function()
+local TeleBtn = CreateButton(SecESP, "Teleport Đến Món Đã Chọn", function()
     if _G.SelectedDrop ~= "" and _G.SelectedDrop ~= "Không có đồ" then
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj.Name == _G.SelectedDrop and obj:IsA("Tool") then
@@ -494,9 +524,11 @@ TeleBtn.MouseButton1Click:Connect(function()
         end
     end
 end)
+TeleBtn.BackgroundColor3 = Colors.Green
+TeleBtn.TextColor3 = Colors.BG
 
 -- ==========================================
--- 5. LOGIC CORE (KHÔNG LỖI ĐÁNH LUNG TUNG)
+-- 5. LOGIC CORE
 -- ==========================================
 local function GetOffsetCFrame(targetCFrame)
     local dist = _G.AtkDistance
@@ -509,47 +541,31 @@ local function GetOffsetCFrame(targetCFrame)
 end
 
 local function GetStrictTarget()
-    -- Ưu tiên Tối Đa: Kyo
     if _G.AutoKyo then
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name == "Kyo" and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                return obj
-            end
-        end
-        return nil -- Chỉ đợi Kyo
+            if obj.Name == "Kyo" and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then return obj end
+        end return nil
     end
 
-    -- Ưu tiên 2: Duck Boss
     if _G.AutoDuck then
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj.Name == "Duck Boss" and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                return obj
-            end
-        end
-        return nil -- Chỉ đợi Duck
+            if obj.Name == "Duck Boss" and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then return obj end
+        end return nil
     end
 
-    -- Ưu tiên 3: Danh sách Boss đã tích chọn
     if _G.AutoBoss then
         local hasSelectedBoss = false
         for bName, isSelected in pairs(_G.FarmBosses) do if isSelected then hasSelectedBoss = true break end end
-        
         if hasSelectedBoss then
             for _, obj in pairs(workspace:GetDescendants()) do
-                if _G.FarmBosses[obj.Name] and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                    return obj
-                end
-            end
-            return nil -- Đã bật AutoBoss thì KIÊN NHẪN CHỜ BOSS, KHÔNG đánh quái thường
+                if _G.FarmBosses[obj.Name] and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then return obj end
+            end return nil
         end
     end
 
-    -- Nếu KHÔNG BẬT BOSS NÀO, tiến hành Farm Mobs thường
     if _G.AutoFarm then
         for _, obj in pairs(workspace:GetDescendants()) do
-            if _G.FarmMobs[obj.Name] and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                return obj
-            end
+            if _G.FarmMobs[obj.Name] and obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then return obj end
         end
     end
 
@@ -566,7 +582,7 @@ local function EquipGuns()
     end
 end
 
--- VÒNG LẶP DI CHUYỂN VÀ ĐÁNH
+-- VÒNG LẶP DI CHUYỂN VÀ ĐÁNH (THỤ ĐỘNG)
 task.spawn(function()
     while task.wait() do
         if _G.AutoFarm or _G.AutoBoss or _G.AutoKyo or _G.AutoDuck then
@@ -579,12 +595,13 @@ task.spawn(function()
                     pcall(function()
                         local char = LocalPlayer.Character
                         if char and char:FindFirstChild("HumanoidRootPart") then
-                            -- Áp dụng hướng đứng & khoảng cách
                             char.HumanoidRootPart.CFrame = GetOffsetCFrame(targetMob.HumanoidRootPart.CFrame)
                             
+                            -- Đánh thụ động bằng cách kích hoạt Tool thay vì bấm chuột
                             if _G.AutoAttack then
-                                VirtualUser:CaptureController()
-                                VirtualUser:ClickButton1(Vector2.new())
+                                for _, tool in pairs(char:GetChildren()) do
+                                    if tool:IsA("Tool") then tool:Activate() end
+                                end
                             end
                         end
                     end)
