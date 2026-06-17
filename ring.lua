@@ -1,5 +1,5 @@
 -- ==========================================
--- GLUE PIECE - YUI HUB V14 (FIX CHẾT + AUTO KIẾM KIRITO)
+-- GLUE PIECE - YUI HUB V15 (MAX FPS, SMOOTH FLY & FLASH ATTACK)
 -- ==========================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,7 +8,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-local guiName = "GluePiece_YuiStyle_V14"
+local guiName = "GluePiece_YuiStyle_V15"
 local CoreGui = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or LocalPlayer.PlayerGui
 
 if CoreGui:FindFirstChild(guiName) then CoreGui[guiName]:Destroy() end
@@ -28,11 +28,14 @@ _G.AutoDuck = false
 _G.AutoKyo = false
 _G.AutoSkill = false
 _G.AutoAttack = false
+_G.FastAttack = false -- Flash Attack
 _G.AutoWeapon = false
 _G.AutoSwitchWeaponFruit = false 
 _G.SwitchDelay = 3 
+_G.AutoKirito = false 
 
-_G.AutoKirito = false -- Tính năng mới: Lấy Dual Sword
+_G.AutoBuso = false -- Haki Vũ Trang (B)
+_G.AutoKen = false  -- Haki Quan Sát (V)
 
 _G.ESPItem = false
 _G.ESPBoss = false
@@ -128,7 +131,7 @@ local TitleBot = Instance.new("TextLabel", TopBar)
 TitleBot.Size = UDim2.new(0, 200, 0, 20)
 TitleBot.Position = UDim2.new(0, 20, 0.5, -10)
 TitleBot.BackgroundTransparency = 1
-TitleBot.Text = "Glue Piece V14 - Fixed"
+TitleBot.Text = "Glue Piece V15 - Max Speed"
 TitleBot.TextColor3 = Colors.Green
 TitleBot.Font = Enum.Font.GothamBold
 TitleBot.TextSize = 13
@@ -468,8 +471,26 @@ local SecFarm = CreateSection(TabFarm, "Cài Đặt Quái")
 CreateToggle(SecFarm, "TỰ ĐỘNG FARM QUÁI BẬT DƯỚI", "AutoFarm")
 for _, mob in ipairs(MobsList) do CreateToggle(SecFarm, "Đánh: " .. mob, "FarmMobs", mob) end
 
--- TAB 3: SETTING FARM 
+-- TAB 3: SETTING FARM & OPTIMIZE
 local TabSetting = CreateTab("Cài Đặt Farm")
+
+local SecOpt = CreateSection(TabSetting, "Tối Ưu / Chống Lag")
+CreateButton(SecOpt, "[ OPTIMIZE ] Giảm Lag / Xóa Hiệu Ứng", function()
+    settings().Rendering.QualityLevel = 1
+    game.Lighting.GlobalShadows = false
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Part") or v:IsA("Union") or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
+            v.Material = Enum.Material.Plastic
+            v.Reflectance = 0
+        elseif v:IsA("Decal") or (v:IsA("Texture") and v.Name ~= "Yui_ESP") then
+            v:Destroy()
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        end
+    end
+    workspace.Terrain.WaterWaveSize = 0
+end)
+
 local SecSplit = CreateSection(TabSetting, "Chia Dame")
 CreateToggle(SecSplit, "Bật Chia Dame (Nhảy từng con)", "SplitDamage")
 CreateSlider(SecSplit, "Đổi mục tiêu sau (Giây):", 1, 10, "SplitTime")
@@ -479,7 +500,8 @@ CreateDropdown(SecMove, "Cách Bay Đến Quái", MoveList, "MoveMethod", false)
 CreateSlider(SecMove, "Tốc Độ Bay:", 100, 2000, "FlySpeed")
 
 local SecSet = CreateSection(TabSetting, "Góc Đánh")
-CreateToggle(SecSet, "Đánh Thụ Động (Tool:Activate)", "AutoAttack")
+CreateToggle(SecSet, "🔥 Flash Attack (Đánh Siêu Tốc Render)", "FastAttack")
+CreateToggle(SecSet, "Đánh Thường (Tool:Activate)", "AutoAttack")
 CreateDropdown(SecSet, "Chọn Hướng Đứng", PosList, "AtkPosition", false)
 CreateSlider(SecSet, "Khoảng cách đánh:", 0, 50, "AtkDistance")
 
@@ -489,6 +511,10 @@ CreateSlider(SecSafe, "Phần trăm máu (%) bỏ chạy:", 10, 90, "SafeHP")
 
 -- TAB 4: SKILL & VŨ KHÍ 
 local TabSkill = CreateTab("Vũ Khí & Skill")
+
+local SecHaki = CreateSection(TabSkill, "Haki Tự Động")
+CreateToggle(SecHaki, "Auto Haki Vũ Trang (B)", "AutoBuso")
+CreateToggle(SecHaki, "Auto Haki Quan Sát (V)", "AutoKen")
 
 local SecSpecialWep = CreateSection(TabSkill, "Vũ Khí Đặc Biệt (Từ Shop)")
 CreateToggle(SecSpecialWep, "Auto Lấy Kiếm Kirito (Dual Sword)", "AutoKirito")
@@ -502,8 +528,6 @@ CreateButton(SecWeap, "🔄 Quét Vũ Khí", function()
     if #wpList == 0 then table.insert(wpList, "Trống") end
     _G.SelectedWeapons = {} UpdateWeaponMenu(wpList)
 end)
-
--- NÚT ĐỔI VŨ KHÍ VÀ TRÁI ÁC QUỶ LIÊN TỤC
 CreateToggle(SecWeap, "[ COMBO ] Đổi Liên Tục Vũ Khí <-> Trái", "AutoSwitchWeaponFruit")
 CreateSlider(SecWeap, "Thời gian đổi (Giây):", 1, 10, "SwitchDelay")
 CreateToggle(SecWeap, "Chỉ Cầm Cứng 1 Vũ Khí", "AutoWeapon")
@@ -579,9 +603,8 @@ task.spawn(function()
     end
 end)
 
-
 -- ==========================================
--- 5. LOGIC DI CHUYỂN AN TOÀN (ANTI-WATER) & ĐÁNH
+-- 5. LOGIC DI CHUYỂN, ĐÁNH, SAFE, HAKI, COMBO
 -- ==========================================
 local function PreventFalling(hrp)
     if not hrp:FindFirstChild("AntiFall_Yui") then
@@ -593,6 +616,31 @@ local function PreventFalling(hrp)
     end
 end
 local function AllowFalling(hrp) if hrp:FindFirstChild("AntiFall_Yui") then hrp.AntiFall_Yui:Destroy() end end
+
+-- AUTO HAKI THÔNG MINH (Không bật đè)
+task.spawn(function()
+    while task.wait(1) do
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then continue end
+
+        if _G.AutoBuso then
+            local hasBuso = char:FindFirstChild("Buso") or char:FindFirstChild("Haki")
+            if not hasBuso then
+                for _, v in pairs(char:GetChildren()) do if v:IsA("Part") and v.Name:match("Arm") and (v.Color == Color3.new(0,0,0) or v.Material == Enum.Material.Neon) then hasBuso = true break end end
+            end
+            if not hasBuso then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.B, false, game) task.wait(0.1) VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.B, false, game)
+            end
+        end
+
+        if _G.AutoKen then
+            local hasKen = char:FindFirstChild("Ken") or char:FindFirstChild("Observation")
+            if not hasKen then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game) task.wait(0.1) VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+            end
+        end
+    end
+end)
 
 -- Vòng lặp Safe Mode
 task.spawn(function()
@@ -669,7 +717,7 @@ local function MoveToSafe(hrp, targetCFrame)
     
     local dest
     if distXZ > 150 then
-        if curPos.Y < 200 then dest = CFrame.new(curPos.X, 250, curPos.Z) 
+        if curPos.Y < 250 then dest = CFrame.new(curPos.X, 300, curPos.Z) 
         else dest = CFrame.new(tgtPos.X, curPos.Y, tgtPos.Z) end
     else
         dest = targetCFrame
@@ -677,7 +725,14 @@ local function MoveToSafe(hrp, targetCFrame)
 
     if _G.MoveMethod == "Bay Mượt (Tween)" then
         local dist = (curPos - dest.Position).Magnitude
-        if dist > 0 then hrp.CFrame = hrp.CFrame:Lerp(dest, math.clamp(_G.FlySpeed / dist * 0.05, 0, 1)) end
+        if dist > 5 then
+            local moveDir = (dest.Position - curPos).Unit
+            local step = math.min(_G.FlySpeed * 0.05, dist)
+            hrp.CFrame = CFrame.new(curPos + moveDir * step, curPos + moveDir * step + dest.LookVector) * CFrame.Angles(dest:ToEulerAnglesXYZ())
+            hrp.CFrame = hrp.CFrame:Lerp(dest, 0.5) 
+        else
+            hrp.CFrame = dest
+        end
     else
         hrp.CFrame = dest
     end
@@ -716,7 +771,21 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP DI CHUYỂN VÀ ĐÁNH (ĐÃ FIX LỖI CHẾT KHÔNG ĐÁNH)
+-- FLASH ATTACK (SIÊU TỐC RENDER)
+task.spawn(function()
+    RunService.RenderStepped:Connect(function()
+        if _G.FastAttack and IsFarmingEnabled() and not _G.IsHealing then
+            local char = LocalPlayer.Character
+            if char then
+                for _, tool in pairs(char:GetChildren()) do
+                    if tool:IsA("Tool") then tool:Activate() end
+                end
+            end
+        end
+    end)
+end)
+
+-- VÒNG LẶP DI CHUYỂN VÀ ĐÁNH 
 task.spawn(function()
     while task.wait() do
         local char = LocalPlayer.Character
@@ -731,11 +800,7 @@ task.spawn(function()
             if targetMob then
                 local attackStartTime = tick()
                 while targetMob and targetMob:FindFirstChild("Humanoid") and targetMob.Humanoid.Health > 0 do
-                    -- FIX QUAN TRỌNG NHẤT: Bắt buộc thoát vòng lặp nếu nhân vật vừa chết
-                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
-                        break
-                    end
-
+                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then break end
                     if _G.SplitDamage and (tick() - attackStartTime) >= _G.SplitTime then break end
                     if _G.IsHealing and not _G.AutoDuck then break end
                     if not IsFarmingEnabled() then break end
@@ -747,12 +812,13 @@ task.spawn(function()
                             PreventFalling(currentHrp)
                             MoveToSafe(currentHrp, dest)
                             
-                            if _G.AutoAttack then
+                            -- Đánh thường (Bình thường)
+                            if _G.AutoAttack and not _G.FastAttack then
                                 for _, tool in pairs(LocalPlayer.Character:GetChildren()) do if tool:IsA("Tool") then tool:Activate() end end
                             end
                         end
                     end)
-                    task.wait(0.05)
+                    task.wait(0.03)
                 end
             else
                 AllowFalling(hrp)
@@ -780,13 +846,11 @@ end)
 
 -- VÒNG LẶP SPAM LẤY KIẾM KIRITO
 task.spawn(function()
-    while task.wait() do
+    while task.wait(0.1) do
         if _G.AutoKirito then
             pcall(function()
-                local clickDetector = workspace.Shop["Special Weapon"]["Dual Sword"]:FindFirstChildWhichIsA("Part", true).ClickDetector
-                if clickDetector then
-                    fireclickdetector(clickDetector)
-                end
+                local clickDetector = workspace.Shop["Special Weapon"]["Dual Sword"]:FindFirstChildWhichIsA("ClickDetector", true)
+                if clickDetector then fireclickdetector(clickDetector) end
             end)
         end
     end
