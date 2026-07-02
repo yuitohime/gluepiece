@@ -1,41 +1,59 @@
 -- ==========================================
--- 1. KHỞI TẠO GIAO DIỆN CHỐNG LỖI (RAW LUA)
+-- 1. HỆ THỐNG GIAO DIỆN (YUI HUB CUSTOM UI)
 -- ==========================================
 local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 local Player = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
-local existingUI = CoreGui:FindFirstChild("RockFruitProUI") or Player:WaitForChild("PlayerGui"):FindFirstChild("RockFruitProUI")
+local existingUI = CoreGui:FindFirstChild("YuiCustomHub") or Player:WaitForChild("PlayerGui"):FindFirstChild("YuiCustomHub")
 if existingUI then existingUI:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RockFruitProUI"
+ScreenGui.Name = "YuiCustomHub"
 ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = Player:WaitForChild("PlayerGui") end
 
--- KHUNG CHÍNH (MAIN WINDOW)
+-- KHUNG CHÍNH
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 560, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -280, 0.4, -180)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255)
+MainFrame.Size = UDim2.new(0, 600, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+local Stroke = Instance.new("UIStroke", MainFrame)
+Stroke.Color = Color3.fromRGB(0, 170, 255)
+Stroke.Thickness = 2
 
-local TitleBar = Instance.new("TextLabel", MainFrame)
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-TitleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleBar.Text = "  Yui HUB Custom - PRO FARM"
-TitleBar.Font = Enum.Font.GothamBold
-TitleBar.TextSize = 14
-TitleBar.TextXAlignment = Enum.TextXAlignment.Left
+-- TIÊU ĐỀ
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundTransparency = 1
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "Yui HUB Custom - ROCK FRUIT"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-local CloseBtn = Instance.new("TextButton", TitleBar)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+local TitleLine = Instance.new("Frame", TopBar)
+TitleLine.Size = UDim2.new(0, 3, 0, 18)
+TitleLine.Position = UDim2.new(0, 5, 0.5, -9)
+TitleLine.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+TitleLine.BorderSizePixel = 0
+
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -35, 0, 0)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 CloseBtn.Text = "X"
@@ -43,334 +61,465 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 16
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- TẠO TAB & CONTENT
+-- CONTAINER TAB VÀ NỘI DUNG
 local TabContainer = Instance.new("Frame", MainFrame)
-TabContainer.Size = UDim2.new(0, 120, 1, -30)
-TabContainer.Position = UDim2.new(0, 0, 0, 30)
-TabContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-local TabListLayout = Instance.new("UIListLayout", TabContainer)
-TabListLayout.Padding = UDim.new(0, 5)
+TabContainer.Size = UDim2.new(0, 130, 1, -45)
+TabContainer.Position = UDim2.new(0, 10, 0, 40)
+TabContainer.BackgroundTransparency = 1
+local TabLayout = Instance.new("UIListLayout", TabContainer)
+TabLayout.Padding = UDim.new(0, 5)
 
 local ContentContainer = Instance.new("Frame", MainFrame)
-ContentContainer.Size = UDim2.new(1, -120, 1, -30)
-ContentContainer.Position = UDim2.new(0, 120, 0, 30)
+ContentContainer.Size = UDim2.new(1, -150, 1, -45)
+ContentContainer.Position = UDim2.new(0, 140, 0, 40)
 ContentContainer.BackgroundTransparency = 1
 
--- BIẾN TOÀN CỤC
-_G.SelectedMobs = {}
-_G.AutoFarm = false
-_G.AutoAttack = false
-_G.AutoEquip = false
-_G.SelectedWeapon = "Chưa chọn"
-_G.AttackPos = "Trên đầu" -- Vị trí
-_G.AttackDist = 5 -- Khoảng cách
-_G.AutoZ = false _G.AutoX = false _G.AutoC = false _G.AutoV = false _G.AutoB = false
-
+-- ==========================================
+-- THƯ VIỆN UI (TẠO NÚT CÔNG TẮC, SLIDER...)
+-- ==========================================
 local Tabs = {}
-local function CreateTabButton(name, isFirst)
+local function CreateTab(name, isFirst)
     local btn = Instance.new("TextButton", TabContainer)
-    btn.Size = UDim2.new(1, 0, 0, 35)
-    btn.BackgroundColor3 = isFirst and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(25, 25, 25)
-    btn.TextColor3 = isFirst and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(200, 200, 200)
-    btn.Text = name
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = isFirst and Color3.fromRGB(30, 30, 30) or Color3.fromRGB(15, 15, 15)
+    btn.TextColor3 = isFirst and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+    btn.Text = "  " .. name
     btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 12
+    btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
-    local contentFrame = Instance.new("Frame", ContentContainer)
-    contentFrame.Size = UDim2.new(1, 0, 1, 0)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Visible = isFirst
+    local Indicator = Instance.new("Frame", btn)
+    Indicator.Size = UDim2.new(0, 3, 1, -10)
+    Indicator.Position = UDim2.new(0, 0, 0, 5)
+    Indicator.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    Indicator.BorderSizePixel = 0
+    Indicator.Visible = isFirst
+
+    local page = Instance.new("ScrollingFrame", ContentContainer)
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 3
+    page.Visible = isFirst
+    local pageLayout = Instance.new("UIListLayout", page)
+    pageLayout.Padding = UDim.new(0, 8)
     
     btn.MouseButton1Click:Connect(function()
         for _, t in pairs(Tabs) do
-            t.Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            t.Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-            t.Content.Visible = false
+            t.Btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            t.Btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+            t.Btn.Indicator.Visible = false
+            t.Page.Visible = false
         end
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        btn.TextColor3 = Color3.fromRGB(0, 150, 255)
-        contentFrame.Visible = true
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Indicator.Visible = true
+        page.Visible = true
     end)
-    table.insert(Tabs, {Btn = btn, Content = contentFrame})
-    return contentFrame
+    table.insert(Tabs, {Btn = btn, Page = page})
+    return page
+end
+
+local function CreateToggle(parent, text, varName)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -10, 0, 35)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -60, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Text = text
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    
+    -- Công tắc (Switch)
+    local switchBg = Instance.new("Frame", frame)
+    switchBg.Size = UDim2.new(0, 40, 0, 20)
+    switchBg.Position = UDim2.new(1, -50, 0.5, -10)
+    switchBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Instance.new("UICorner", switchBg).CornerRadius = UDim.new(1, 0)
+    
+    local circle = Instance.new("Frame", switchBg)
+    circle.Size = UDim2.new(0, 16, 0, 16)
+    circle.Position = UDim2.new(0, 2, 0.5, -8)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        _G[varName] = state
+        
+        local goalCircle = {}
+        local goalBg = {}
+        if state then
+            goalCircle.Position = UDim2.new(1, -18, 0.5, -8)
+            goalBg.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        else
+            goalCircle.Position = UDim2.new(0, 2, 0.5, -8)
+            goalBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end
+        TweenService:Create(circle, TweenInfo.new(0.2), goalCircle):Play()
+        TweenService:Create(switchBg, TweenInfo.new(0.2), goalBg):Play()
+    end)
+end
+
+local function CreateButton(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(0, 100, 200)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function CreateSlider(parent, text, min, max, varName)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -10, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -20, 0, 20)
+    label.Position = UDim2.new(0, 10, 0, 5)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.Text = text .. ": " .. min
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local sliderBg = Instance.new("Frame", frame)
+    sliderBg.Size = UDim2.new(1, -20, 0, 6)
+    sliderBg.Position = UDim2.new(0, 10, 0, 30)
+    sliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame", sliderBg)
+    fill.Size = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local btn = Instance.new("TextButton", sliderBg)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    
+    local isDragging = false
+    local function updateSlider(input)
+        local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + (max - min) * pos)
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        label.Text = text .. ": " .. val
+        _G[varName] = val
+    end
+    
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            updateSlider(input)
+        end
+    end)
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input)
+        end
+    end)
 end
 
 -- ==========================================
--- TAB 1: FARM MOBS (CÓ VỊ TRÍ, KHOẢNG CÁCH)
+-- BIẾN TOÀN CỤC CHÍNH
 -- ==========================================
-local FarmTab = CreateTabButton("Farm Mobs", true)
-local FarmLeftCol = Instance.new("Frame", FarmTab)
-FarmLeftCol.Size = UDim2.new(0.45, -10, 1, -20)
-FarmLeftCol.Position = UDim2.new(0, 10, 0, 10)
-FarmLeftCol.BackgroundTransparency = 1
+_G.SelectedMobs = {}
+_G.SelectedWeapons = {} -- Chọn nhiều vũ khí
+_G.AutoFarm = false
+_G.AutoAttack = false
+_G.AutoEquip = false
+_G.AttackPos = "Trên đầu"
+_G.AttackDist = 5
+_G.AutoZ, _G.AutoX, _G.AutoC, _G.AutoV = false, false, false, false
 
--- CHUYỂN CỘT PHẢI THÀNH SCROLLING ĐỂ CHỨA NHIỀU NÚT
-local FarmRightCol = Instance.new("ScrollingFrame", FarmTab)
-FarmRightCol.Size = UDim2.new(0.55, -15, 1, -20)
-FarmRightCol.Position = UDim2.new(0.45, 5, 0, 10)
-FarmRightCol.BackgroundTransparency = 1
-FarmRightCol.ScrollBarThickness = 3
-local RightLayout = Instance.new("UIListLayout", FarmRightCol)
-RightLayout.Padding = UDim.new(0, 5)
+-- Biến Player
+_G.WalkSpeed = 16
+_G.JumpPower = 50
+_G.Noclip = false
+_G.Fly = false
 
--- [ CỘT TRÁI - LIST QUÁI ]
-local MobDropBtn = Instance.new("TextButton", FarmLeftCol)
-MobDropBtn.Size = UDim2.new(1, 0, 0, 30)
-MobDropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MobDropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MobDropBtn.Text = "Chọn Quái (▼)"
-MobDropBtn.Font = Enum.Font.GothamBold
+-- ==========================================
+-- XÂY DỰNG CÁC TAB
+-- ==========================================
 
-local MobScroll = Instance.new("ScrollingFrame", FarmLeftCol)
-MobScroll.Size = UDim2.new(1, 0, 0, 210)
-MobScroll.Position = UDim2.new(0, 0, 0, 35)
-MobScroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MobScroll.ScrollBarThickness = 4
+-- 1. TAB MAIN (FARM MOBS)
+local TabMain = CreateTab("Main", true)
+
+-- Dropdown Chọn Quái (Multi)
+local MobDropBtn = CreateButton(TabMain, "Danh Sách Quái (▼)", function() end)
+local MobScroll = Instance.new("ScrollingFrame", TabMain)
+MobScroll.Size = UDim2.new(1, -10, 0, 150)
+MobScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MobScroll.Visible = false
 local MobLayout = Instance.new("UIListLayout", MobScroll)
 
 MobDropBtn.MouseButton1Click:Connect(function()
     MobScroll.Visible = not MobScroll.Visible
-    MobDropBtn.Text = MobScroll.Visible and "Đóng List (▲)" or "Chọn Quái (▼)"
+    MobDropBtn.Text = MobScroll.Visible and "Đóng Danh Sách (▲)" or "Danh Sách Quái (▼)"
 end)
-
-local RefreshMobsBtn = Instance.new("TextButton", FarmLeftCol)
-RefreshMobsBtn.Size = UDim2.new(1, 0, 0, 30)
-RefreshMobsBtn.Position = UDim2.new(0, 0, 1, -30)
-RefreshMobsBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-RefreshMobsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RefreshMobsBtn.Text = "🔄 Quét Folder 'mod'"
-RefreshMobsBtn.Font = Enum.Font.GothamBold
 
 local function LoadMobs()
     for _, c in ipairs(MobScroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     _G.SelectedMobs = {}
     local foundMobs = {}
-    local mobFolder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
-    for _, v in pairs(mobFolder:GetChildren()) do
+    local folder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
+    for _, v in pairs(folder:GetChildren()) do
         if v:FindFirstChild("Humanoid") and v.Name ~= Player.Name then
             if not table.find(foundMobs, v.Name) then table.insert(foundMobs, v.Name) end
         end
     end
-    if #foundMobs == 0 then foundMobs = {"Bandit", "Monkey", "Boss"} end
     for _, mob in ipairs(foundMobs) do
         local btn = Instance.new("TextButton", MobScroll)
-        btn.Size = UDim2.new(1, 0, 0, 25)
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        btn.Size = UDim2.new(1, 0, 0, 30)
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
         btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-        btn.Text = "☐ " .. mob
+        btn.Text = "  ☐ " .. mob
         btn.Font = Enum.Font.Gotham
+        btn.TextXAlignment = Enum.TextXAlignment.Left
         local isSel = false
         btn.MouseButton1Click:Connect(function()
             isSel = not isSel
-            btn.Text = isSel and "☑ " .. mob or "☐ " .. mob
-            btn.TextColor3 = isSel and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(200, 200, 200)
+            btn.Text = isSel and "  ☑ " .. mob or "  ☐ " .. mob
+            btn.TextColor3 = isSel and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(200, 200, 200)
             if isSel then table.insert(_G.SelectedMobs, mob)
             else for i, v in ipairs(_G.SelectedMobs) do if v == mob then table.remove(_G.SelectedMobs, i) break end end end
         end)
     end
-    MobScroll.CanvasSize = UDim2.new(0, 0, 0, #foundMobs * 25)
+    MobScroll.CanvasSize = UDim2.new(0, 0, 0, #foundMobs * 30)
 end
-RefreshMobsBtn.MouseButton1Click:Connect(LoadMobs)
+CreateButton(TabMain, "🔄 Quét Lại Quái", LoadMobs)
 LoadMobs()
 
--- [ CỘT PHẢI - CÀI ĐẶT ]
-local function CreateButton(parent, text, bgColor, action)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.BackgroundColor3 = bgColor
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = text
-    btn.Font = Enum.Font.GothamBold
-    btn.MouseButton1Click:Connect(function() action(btn) end)
-    return btn
+-- Dropdown Chọn Vũ Khí (Multi - Cho phép cầm nhiều sức mạnh)
+local WepDropBtn = CreateButton(TabMain, "Chọn Vũ Khí (▼)", function() end)
+local WepScroll = Instance.new("ScrollingFrame", TabMain)
+WepScroll.Size = UDim2.new(1, -10, 0, 100)
+WepScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+WepScroll.Visible = false
+local WepLayout = Instance.new("UIListLayout", WepScroll)
+
+WepDropBtn.MouseButton1Click:Connect(function()
+    WepScroll.Visible = not WepScroll.Visible
+end)
+
+local function LoadWeps()
+    for _, c in ipairs(WepScroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    _G.SelectedWeapons = {}
+    local foundWeps = {}
+    for _, v in pairs(Player.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(foundWeps, v.Name) end end
+    for _, v in pairs(Player.Character:GetChildren()) do if v:IsA("Tool") then table.insert(foundWeps, v.Name) end end
+    
+    for _, wep in ipairs(foundWeps) do
+        local btn = Instance.new("TextButton", WepScroll)
+        btn.Size = UDim2.new(1, 0, 0, 30)
+        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.Text = "  ☐ " .. wep
+        btn.Font = Enum.Font.Gotham
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        local isSel = false
+        btn.MouseButton1Click:Connect(function()
+            isSel = not isSel
+            btn.Text = isSel and "  ☑ " .. wep or "  ☐ " .. wep
+            btn.TextColor3 = isSel and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(200, 200, 200)
+            if isSel then table.insert(_G.SelectedWeapons, wep)
+            else for i, v in ipairs(_G.SelectedWeapons) do if v == wep then table.remove(_G.SelectedWeapons, i) break end end end
+        end)
+    end
+    WepScroll.CanvasSize = UDim2.new(0, 0, 0, #foundWeps * 30)
 end
+CreateButton(TabMain, "🔄 Quét Túi Đồ", LoadWeps)
 
--- Tự động quét vũ khí trong túi (Giải quyết lỗi không tìm thấy Melee/Combat)
-local Weps = {"Chưa có vũ khí"}
-local WepIdx = 1
-local WepBtn = CreateButton(FarmRightCol, "Vũ khí: " .. Weps[1], Color3.fromRGB(50, 50, 50), function(btn)
-    WepIdx = WepIdx + 1
-    if WepIdx > #Weps then WepIdx = 1 end
-    _G.SelectedWeapon = Weps[WepIdx]
-    btn.Text = "Vũ khí: " .. _G.SelectedWeapon
-end)
+-- Các nút bật tắt Farm ngay gần list
+CreateToggle(TabMain, "Tự Động Cầm Vũ Khí", "AutoEquip")
+CreateToggle(TabMain, "Tự Động Farm", "AutoFarm")
+CreateToggle(TabMain, "Tự Động Click (Đánh)", "AutoAttack")
 
-CreateButton(FarmRightCol, "🔄 Quét Túi Đồ (Lấy tên vũ khí)", Color3.fromRGB(0, 100, 200), function()
-    Weps = {}
-    for _, v in pairs(Player.Backpack:GetChildren()) do if v:IsA("Tool") then table.insert(Weps, v.Name) end end
-    for _, v in pairs(Player.Character:GetChildren()) do if v:IsA("Tool") then table.insert(Weps, v.Name) end end
-    if #Weps == 0 then table.insert(Weps, "Không tìm thấy đồ") end
-    WepIdx = 1
-    _G.SelectedWeapon = Weps[1]
-    WepBtn.Text = "Vũ khí: " .. _G.SelectedWeapon
-end)
-
--- Cài đặt vị trí & khoảng cách
+-- 2. TAB SETTING (Cài đặt góc đánh)
+local TabSetting = CreateTab("Setting", false)
 local PosList = {"Trên đầu", "Dưới chân", "Sau lưng", "Trước mặt"}
 local PosIdx = 1
-CreateButton(FarmRightCol, "Vị trí: " .. PosList[1], Color3.fromRGB(80, 80, 40), function(btn)
+local PosBtn = CreateButton(TabSetting, "Góc Đánh: " .. PosList[1], function() end)
+PosBtn.MouseButton1Click:Connect(function()
     PosIdx = PosIdx + 1
     if PosIdx > #PosList then PosIdx = 1 end
     _G.AttackPos = PosList[PosIdx]
-    btn.Text = "Vị trí: " .. _G.AttackPos
+    PosBtn.Text = "Góc Đánh: " .. _G.AttackPos
 end)
+CreateSlider(TabSetting, "Khoảng Cách Đánh", 0, 20, "AttackDist")
 
-local DistList = {3, 5, 8, 12, 15}
-local DistIdx = 2
-CreateButton(FarmRightCol, "Khoảng cách: 5", Color3.fromRGB(80, 80, 40), function(btn)
-    DistIdx = DistIdx + 1
-    if DistIdx > #DistList then DistIdx = 1 end
-    _G.AttackDist = DistList[DistIdx]
-    btn.Text = "Khoảng cách: " .. _G.AttackDist
-end)
+CreateToggle(TabSetting, "Tự Động Skill Z", "AutoZ")
+CreateToggle(TabSetting, "Tự Động Skill X", "AutoX")
+CreateToggle(TabSetting, "Tự Động Skill C", "AutoC")
+CreateToggle(TabSetting, "Tự Động Skill V", "AutoV")
 
--- Toggles (Auto Farm, Equip, Attack)
-local function CreateToggle(parent, text, varName)
-    local state = false
-    return CreateButton(parent, text .. ": TẮT", Color3.fromRGB(150, 40, 40), function(btn)
-        state = not state
-        btn.Text = state and text .. ": BẬT" or text .. ": TẮT"
-        btn.BackgroundColor3 = state and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
-        _G[varName] = state
+-- 3. TAB TELEPORT
+local TabTeleport = CreateTab("Teleport", false)
+local function CreateTPMenu(title, list)
+    local Label = Instance.new("TextLabel", TabTeleport)
+    Label.Size = UDim2.new(1, 0, 0, 25)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(0, 170, 255)
+    Label.Text = "◆ " .. title
+    Label.Font = Enum.Font.GothamBold
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Drop = CreateButton(TabTeleport, list[1], function() end)
+    local idx = 1
+    Drop.MouseButton1Click:Connect(function()
+        idx = idx + 1
+        if idx > #list then idx = 1 end
+        Drop.Text = list[idx]
     end)
-end
-
-CreateToggle(FarmRightCol, "Auto Equip", "AutoEquip")
-CreateToggle(FarmRightCol, "Auto Farm", "AutoFarm")
-CreateToggle(FarmRightCol, "Auto Attack", "AutoAttack")
-FarmRightCol.CanvasSize = UDim2.new(0,0,0, 280) -- Cho phép cuộn để thấy hết nút
-
--- ==========================================
--- TAB 2: TELEPORT THÔNG MINH
--- ==========================================
-local TeleportTab = CreateTabButton("Teleport", false)
-
-local function TPToPart(name)
-    local found = false
-    -- Quét toàn bộ map để tìm tên NPC hoặc Đảo
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name == name then
-            if v:IsA("Model") and v.PrimaryPart then
-                Player.Character.HumanoidRootPart.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 3, 0)
-                found = true; break
-            elseif v:IsA("BasePart") then
-                Player.Character.HumanoidRootPart.CFrame = v.CFrame * CFrame.new(0, 3, 0)
-                found = true; break
+    
+    CreateButton(TabTeleport, "✈️ Bay Tới Đích", function()
+        -- Quét toàn map thay vì 1 folder cố định để fix lỗi NPC
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == Drop.Text then
+                if v:IsA("Model") and v.PrimaryPart then
+                    Player.Character.HumanoidRootPart.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 3, 0)
+                elseif v:IsA("BasePart") then
+                    Player.Character.HumanoidRootPart.CFrame = v.CFrame * CFrame.new(0, 3, 0)
+                end
+                break
             end
         end
-    end
-    if not found then print("Không tìm thấy mục tiêu trong map!") end
-end
-
-local function CreateTPSection(yPos, titleText, items)
-    local Title = Instance.new("TextLabel", TeleportTab)
-    Title.Size = UDim2.new(1, -20, 0, 20)
-    Title.Position = UDim2.new(0, 10, 0, yPos)
-    Title.BackgroundTransparency = 1
-    Title.TextColor3 = Color3.fromRGB(0, 150, 255)
-    Title.Text = titleText
-    Title.Font = Enum.Font.GothamBold
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-
-    local DropBtn = Instance.new("TextButton", TeleportTab)
-    DropBtn.Size = UDim2.new(0.6, 0, 0, 30)
-    DropBtn.Position = UDim2.new(0, 10, 0, yPos + 25)
-    DropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    DropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropBtn.Text = items[1]
-    DropBtn.Font = Enum.Font.Gotham
-    
-    local idx = 1
-    DropBtn.MouseButton1Click:Connect(function()
-        idx = idx + 1
-        if idx > #items then idx = 1 end
-        DropBtn.Text = items[idx]
     end)
-    
-    local TpBtn = Instance.new("TextButton", TeleportTab)
-    TpBtn.Size = UDim2.new(0.35, 0, 0, 30)
-    TpBtn.Position = UDim2.new(0.65, 0, 0, yPos + 25)
-    TpBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-    TpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TpBtn.Text = "Bay Tới"
-    TpBtn.Font = Enum.Font.GothamBold
-    TpBtn.MouseButton1Click:Connect(function() TPToPart(DropBtn.Text) end)
 end
+CreateTPMenu("Đảo & Khu Vực", {"Starter Island", "Jungle", "Desert", "Snow"})
+CreateTPMenu("Quest & NPC", {"Bandit Quest", "Sword Dealer", "Fruit Dealer"})
 
--- CHÚ Ý: Bạn có thể sửa tên trong ngoặc cho khớp với tên NPC trong game
-CreateTPSection(10, "1. Teleport Maps (Đảo)", {"Starter Island", "Buggy Island", "Jungle", "Desert"})
-CreateTPSection(80, "2. Teleport Quest NPC", {"Bandit Quest", "Monkey Quest", "Gorilla Quest"})
-CreateTPSection(150, "3. Teleport Normal NPC", {"Sword Dealer", "Fruit Dealer", "Blacksmith"})
+-- 4. TAB PLAYER
+local TabPlayer = CreateTab("Player", false)
+CreateSlider(TabPlayer, "Tốc Độ Chạy (WalkSpeed)", 16, 200, "WalkSpeed")
+CreateSlider(TabPlayer, "Sức Bật (JumpPower)", 50, 300, "JumpPower")
+CreateToggle(TabPlayer, "Đi Xuyên Tường (Noclip)", "Noclip")
+-- Logic WalkSpeed/JumpPower & Noclip
+RunService.Stepped:Connect(function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        Player.Character.Humanoid.WalkSpeed = _G.WalkSpeed
+        Player.Character.Humanoid.JumpPower = _G.JumpPower
+    end
+    if _G.Noclip and Player.Character then
+        for _, v in pairs(Player.Character:GetChildren()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+-- 5. TAB SERVER
+local TabServer = CreateTab("Server", false)
+CreateButton(TabServer, "Tối Ưu FPS (Giảm Lag)", function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            v:Destroy()
+        end
+    end
+    game.Lighting.GlobalShadows = false
+    game.Lighting.FogEnd = 9e9
+end)
+CreateButton(TabServer, "Xóa Hiệu Ứng (Remove Effects)", function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Sparkles") or v:IsA("Fire") then v:Destroy() end
+    end
+end)
+CreateButton(TabServer, "Rejoin (Vào Lại Server Cũ)", function()
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+end)
+CreateButton(TabServer, "Hop Server Ít Người (Low Server)", function()
+    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data
+    for _, server in pairs(servers) do
+        if server.playing < server.maxPlayers and server.id ~= game.JobId then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, Player)
+            break
+        end
+    end
+end)
 
 -- ==========================================
--- TAB 3: AUTO SKILLS
--- ==========================================
-local SkillTab = CreateTabButton("Auto Skills", false)
-local SkillListLayout = Instance.new("UIListLayout", SkillTab)
-SkillListLayout.Padding = UDim.new(0, 10)
-Instance.new("UIPadding", SkillTab).PaddingTop = UDim.new(0, 10)
-
-CreateToggle(SkillTab, "Dùng Skill [Z]", "AutoZ")
-CreateToggle(SkillTab, "Dùng Skill [X]", "AutoX")
-CreateToggle(SkillTab, "Dùng Skill [C]", "AutoC")
-CreateToggle(SkillTab, "Dùng Skill [V]", "AutoV")
-
--- ==========================================
--- VÒNG LẶP CHẠY CHỨC NĂNG (MAIN LOOP)
+-- VÒNG LẶP AUTO FARM (MAIN LOOP)
 -- ==========================================
 task.spawn(function()
     while task.wait(0.1) do
         
-        -- 1. Tự động cầm vũ khí
+        -- Auto Equip Multi-Weapon
         if _G.AutoEquip and Player.Character then
-            for _, tool in pairs(Player.Backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name == _G.SelectedWeapon then
-                    Player.Character.Humanoid:EquipTool(tool)
-                end
+            for _, wepName in pairs(_G.SelectedWeapons) do
+                local tool = Player.Backpack:FindFirstChild(wepName)
+                if tool then Player.Character.Humanoid:EquipTool(tool) end
             end
         end
 
-        -- 2. Tự động đánh (BỊ ĐỘNG - KHÔNG CHIẾM CHUỘT)
+        -- Auto Attack (Bị động, Fix loạn cảm ứng)
         if _G.AutoAttack and Player.Character then
-            local tool = Player.Character:FindFirstChildOfClass("Tool")
-            if tool then 
-                -- Chỉ ép vũ khí kích hoạt, không đụng tới màn hình cảm ứng
-                tool:Activate() 
+            for _, tool in pairs(Player.Character:GetChildren()) do
+                if tool:IsA("Tool") then tool:Activate() end
             end
         end
 
-        -- 3. Tự động xả Skill
+        -- Auto Skill
         if _G.AutoFarm or _G.AutoAttack then
-            if _G.AutoZ then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game) task.wait(0.05) end
-            if _G.AutoX then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game) task.wait(0.05) end
-            if _G.AutoC then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game) task.wait(0.05) end
-            if _G.AutoV then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game) task.wait(0.05) end
+            if _G.AutoZ then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game) end
+            if _G.AutoX then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game) end
+            if _G.AutoC then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game) end
+            if _G.AutoV then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game) end
         end
 
-        -- 4. Logic Auto Farm (VỊ TRÍ & KHOẢNG CÁCH)
+        -- Auto Farm (Fix Lỗi Teleport Tứ Tung)
         if _G.AutoFarm and #_G.SelectedMobs > 0 then
-            local mobFolder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
+            local folder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
+            local targetFound = false
+            
             for _, mobName in pairs(_G.SelectedMobs) do
-                local target = mobFolder:FindFirstChild(mobName)
+                local target = folder:FindFirstChild(mobName)
+                -- Kiểm tra máu > 0 để tránh tele vào xác quái
                 if target and target:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                    targetFound = true
+                    local hrp = Player.Character.HumanoidRootPart
                     
-                    -- Tính toán CFrame tùy theo lựa chọn của bạn
+                    -- Reset vận tốc rơi tự do để không bị văng vọt lên trời
+                    hrp.Velocity = Vector3.new(0, 0, 0) 
+                    
                     local offset = CFrame.new(0, 0, 0)
                     local dist = _G.AttackDist
                     
-                    if _G.AttackPos == "Trên đầu" then
-                        offset = CFrame.new(0, dist, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-                    elseif _G.AttackPos == "Dưới chân" then
-                        offset = CFrame.new(0, -dist, 0) * CFrame.Angles(math.rad(90), 0, 0)
-                    elseif _G.AttackPos == "Sau lưng" then
-                        offset = CFrame.new(0, 0, dist)
-                    elseif _G.AttackPos == "Trước mặt" then
-                        offset = CFrame.new(0, 0, -dist) * CFrame.Angles(0, math.rad(180), 0)
+                    if _G.AttackPos == "Trên đầu" then offset = CFrame.new(0, dist, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                    elseif _G.AttackPos == "Dưới chân" then offset = CFrame.new(0, -dist, 0) * CFrame.Angles(math.rad(90), 0, 0)
+                    elseif _G.AttackPos == "Sau lưng" then offset = CFrame.new(0, 0, dist)
+                    elseif _G.AttackPos == "Trước mặt" then offset = CFrame.new(0, 0, -dist) * CFrame.Angles(0, math.rad(180), 0)
                     end
                     
-                    Player.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame * offset
-                    break -- Farm từng con một
+                    hrp.CFrame = target.HumanoidRootPart.CFrame * offset
+                    break -- Đánh xong 1 con sống rồi mới quét con khác
                 end
             end
         end
