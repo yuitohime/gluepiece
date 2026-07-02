@@ -1,211 +1,346 @@
--- Gọi thư viện UI Rayfield (Giao diện giống ảnh nhất, đã tối ưu không lỗi mạng)
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/sirius-hub/rayfield/main/source'))()
+-- ==========================================
+-- 1. TẠO GIAO DIỆN (RAW LUA - CHỐNG LỖI 100%)
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local Player = game.Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
-local Window = Rayfield:CreateWindow({
-   Name = "Rock Fruit HUB | Full Chức Năng",
-   LoadingTitle = "Đang tải giao diện...",
-   LoadingSubtitle = "Vui lòng chờ",
-   ConfigurationSaving = {
-      Enabled = false -- TẮT để tránh lỗi crash trên các Executor di động
-   },
-   Discord = { Enabled = false },
-   KeySystem = false
-})
+local existingUI = CoreGui:FindFirstChild("RockFruitCustomUI") or Player:WaitForChild("PlayerGui"):FindFirstChild("RockFruitCustomUI")
+if existingUI then existingUI:Destroy() end
 
----------------------------------------------------------
--- [ BIẾN TOÀN CỤC - LƯU TRẠNG THÁI ]
----------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RockFruitCustomUI"
+ScreenGui.ResetOnSpawn = false
+pcall(function() ScreenGui.Parent = CoreGui end)
+if not ScreenGui.Parent then ScreenGui.Parent = Player:WaitForChild("PlayerGui") end
+
+-- KHUNG CHÍNH (MAIN WINDOW)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 550, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -275, 0.4, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(0, 150, 255) -- Viền xanh dương giống ảnh
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+-- TIÊU ĐỀ
+local TitleBar = Instance.new("TextLabel", MainFrame)
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.Text = "  Yui HUB Custom - ROCK FRUIT"
+TitleBar.Font = Enum.Font.GothamBold
+TitleBar.TextSize = 14
+TitleBar.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton", TitleBar)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 16
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- ==========================================
+-- BỐ CỤC CHIA 2 BÊN (TRÁI: TAB | PHẢI: NỘI DUNG)
+-- ==========================================
+local TabContainer = Instance.new("Frame", MainFrame)
+TabContainer.Size = UDim2.new(0, 120, 1, -30)
+TabContainer.Position = UDim2.new(0, 0, 0, 30)
+TabContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
+local TabListLayout = Instance.new("UIListLayout", TabContainer)
+TabListLayout.Padding = UDim.new(0, 5)
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local ContentContainer = Instance.new("Frame", MainFrame)
+ContentContainer.Size = UDim2.new(1, -120, 1, -30)
+ContentContainer.Position = UDim2.new(0, 120, 0, 30)
+ContentContainer.BackgroundTransparency = 1
+
+-- Biến lưu trữ trạng thái
+_G.SelectedMobs = {}
 _G.AutoFarm = false
 _G.AutoAttack = false
-_G.SelectedMobs = {}
-_G.WeaponType = "Melee" -- Mặc định
 _G.AutoEquip = false
+_G.WeaponType = "Melee"
 
--- Biến Auto Skill
-_G.AutoZ = false
-_G.AutoX = false
-_G.AutoC = false
-_G.AutoV = false
-_G.AutoB = false
+_G.AutoZ, _G.AutoX, _G.AutoC, _G.AutoV, _G.AutoB = false, false, false, false, false
 
--- Biến Teleport
-_G.SelectedIsland = nil
-_G.AutoTeleport = false
-
-local Player = game.Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local VirtualUser = game:GetService("VirtualUser")
-
----------------------------------------------------------
--- [ TAB 1: FARM MOBS (Sắp xếp chuẩn theo ảnh) ]
----------------------------------------------------------
-local TabFarm = Window:CreateTab("Farm Mobs", 4483362458)
-
--- === CỘT 1: AUTO EQUIP WEAPON ===
-local SectionEquip = TabFarm:CreateSection("Auto Equip Weapon")
-
-TabFarm:CreateDropdown({
-   Name = "Select Weapon (Chọn loại sức mạnh)",
-   Options = {"Melee", "Sword", "Fruit", "Gun"},
-   CurrentOption = {"Melee"},
-   MultipleOptions = false,
-   Flag = "WeaponSelect",
-   Callback = function(Option)
-      _G.WeaponType = Option[1]
-   end,
-})
-
-TabFarm:CreateToggle({
-   Name = "Auto Equip",
-   CurrentValue = false,
-   Flag = "ToggleEquip",
-   Callback = function(Value)
-      _G.AutoEquip = Value
-   end,
-})
-
--- === CỘT 2: FARMING CONFIG & LIST QUÁI ===
-local SectionFarm = TabFarm:CreateSection("Farming Config")
-
--- Hàm quét quái thực tế trong Map
-local function ScanMobs()
-    local mobs = {}
-    for _, v in pairs(workspace:GetChildren()) do
-        if v:FindFirstChild("Humanoid") and v.Name ~= Player.Name then
-            if not table.find(mobs, v.Name) then
-                table.insert(mobs, v.Name)
-            end
+local Tabs = {}
+local function CreateTabButton(name, isFirst)
+    local btn = Instance.new("TextButton", TabContainer)
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = isFirst and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(25, 25, 25)
+    btn.TextColor3 = isFirst and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(200, 200, 200)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 13
+    
+    local contentFrame = Instance.new("Frame", ContentContainer)
+    contentFrame.Size = UDim2.new(1, 0, 1, 0)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Visible = isFirst
+    
+    btn.MouseButton1Click:Connect(function()
+        for _, t in pairs(Tabs) do
+            t.Btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            t.Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            t.Content.Visible = false
         end
-    end
-    if #mobs == 0 then mobs = {"Chưa load quái, hãy bấm Refresh"} end
-    return mobs
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        btn.TextColor3 = Color3.fromRGB(0, 150, 255)
+        contentFrame.Visible = true
+    end)
+    
+    table.insert(Tabs, {Btn = btn, Content = contentFrame})
+    return contentFrame
 end
 
--- TÍNH NĂNG CHÍNH: Ô list quái mũi tên, chọn nhiều không tắt
-local MobDropdown = TabFarm:CreateDropdown({
-   Name = "Danh Sách Quái (Chọn Nhiều)",
-   Options = ScanMobs(),
-   CurrentOption = {},
-   MultipleOptions = true, -- Cho phép tick nhiều ô, KHÔNG tự động đóng menu
-   Flag = "MobSelect",
-   Callback = function(Options)
-      _G.SelectedMobs = Options
-   end,
-})
+-- ==========================================
+-- XÂY DỰNG TAB 1: FARM MOBS
+-- ==========================================
+local FarmTab = CreateTabButton("Farm Mobs", true)
 
-TabFarm:CreateButton({
-   Name = "🔄 Quét Lại List Quái Xung Quanh",
-   Callback = function()
-      MobDropdown:Refresh(ScanMobs())
-   end,
-})
+-- Chia cột bên phải (Cột trái: Mobs | Cột phải: Equip & Attack)
+local FarmLeftCol = Instance.new("Frame", FarmTab)
+FarmLeftCol.Size = UDim2.new(0.5, -10, 1, -20)
+FarmLeftCol.Position = UDim2.new(0, 10, 0, 10)
+FarmLeftCol.BackgroundTransparency = 1
 
-TabFarm:CreateToggle({
-   Name = "Auto Farm (Tự động TP & Đánh)",
-   CurrentValue = false,
-   Flag = "ToggleFarm",
-   Callback = function(Value)
-      _G.AutoFarm = Value
-   end,
-})
+local FarmRightCol = Instance.new("Frame", FarmTab)
+FarmRightCol.Size = UDim2.new(0.5, -15, 1, -20)
+FarmRightCol.Position = UDim2.new(0.5, 5, 0, 10)
+FarmRightCol.BackgroundTransparency = 1
 
-TabFarm:CreateToggle({
-   Name = "Auto Attack (Đánh thường)",
-   CurrentValue = false,
-   Flag = "ToggleAttack",
-   Callback = function(Value)
-      _G.AutoAttack = Value
-   end,
-})
+-- Nút Bật/Tắt Dropdown Mobs
+local MobDropBtn = Instance.new("TextButton", FarmLeftCol)
+MobDropBtn.Size = UDim2.new(1, 0, 0, 30)
+MobDropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MobDropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MobDropBtn.Text = "Chọn Quái (▼)"
+MobDropBtn.Font = Enum.Font.Gotham
 
----------------------------------------------------------
--- [ TAB 2: TELEPORT & ISLAND ]
----------------------------------------------------------
-local TabTeleport = Window:CreateTab("Teleport", 4483362458)
-local SectionTeleport = TabTeleport:CreateSection("Island Waypoint System")
+-- Khung chứa List quái (Sẽ bật/tắt khi bấm nút trên)
+local MobScroll = Instance.new("ScrollingFrame", FarmLeftCol)
+MobScroll.Size = UDim2.new(1, 0, 0, 180)
+MobScroll.Position = UDim2.new(0, 0, 0, 35)
+MobScroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MobScroll.ScrollBarThickness = 4
+MobScroll.Visible = false -- Mặc định ẩn
+local MobListLayout = Instance.new("UIListLayout", MobScroll)
 
-TabTeleport:CreateDropdown({
-   Name = "Saved Islands / Maps",
-   Options = {"Starter Island", "Jungle", "Desert", "Snow", "Magma"},
-   CurrentOption = {"Starter Island"},
-   MultipleOptions = false,
-   Flag = "IslandSelect",
-   Callback = function(Option)
-      _G.SelectedIsland = Option[1]
-   end,
-})
+-- Logic Mở/Đóng Dropdown không mất list
+MobDropBtn.MouseButton1Click:Connect(function()
+    MobScroll.Visible = not MobScroll.Visible
+    MobDropBtn.Text = MobScroll.Visible and "Đóng List Quái (▲)" or "Chọn Quái (▼)"
+end)
 
-TabTeleport:CreateButton({
-   Name = "Teleport Tới Đảo",
-   Callback = function()
-      -- Thêm tọa độ (CFrame) các đảo của Rock Fruit vào đây
-      print("Đang bay tới: " .. tostring(_G.SelectedIsland))
-   end,
-})
+-- Nút Refresh Mobs
+local RefreshMobsBtn = Instance.new("TextButton", FarmLeftCol)
+RefreshMobsBtn.Size = UDim2.new(1, 0, 0, 30)
+RefreshMobsBtn.Position = UDim2.new(0, 0, 1, -30)
+RefreshMobsBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+RefreshMobsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshMobsBtn.Text = "🔄 Quét Folder 'mod'"
+RefreshMobsBtn.Font = Enum.Font.GothamBold
 
----------------------------------------------------------
--- [ TAB 3: AUTO SKILLS ]
----------------------------------------------------------
-local TabSkills = Window:CreateTab("Auto Skills", 4483362458)
-local SectionSkills = TabSkills:CreateSection("Skill Settings")
-
-TabSkills:CreateToggle({Name = "Auto Skill [Z]", CurrentValue = false, Callback = function(V) _G.AutoZ = V end})
-TabSkills:CreateToggle({Name = "Auto Skill [X]", CurrentValue = false, Callback = function(V) _G.AutoX = V end})
-TabSkills:CreateToggle({Name = "Auto Skill [C]", CurrentValue = false, Callback = function(V) _G.AutoC = V end})
-TabSkills:CreateToggle({Name = "Auto Skill [V]", CurrentValue = false, Callback = function(V) _G.AutoV = V end})
-TabSkills:CreateToggle({Name = "Auto Skill [B]", CurrentValue = false, Callback = function(V) _G.AutoB = V end})
-
----------------------------------------------------------
--- [ VÒNG LẶP XỬ LÝ LOGIC (MAIN LOOP) ]
----------------------------------------------------------
-task.spawn(function()
-    while task.wait() do
+-- Hàm Load Mobs từ folder "mod"
+local function LoadMobs()
+    for _, child in ipairs(MobScroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    _G.SelectedMobs = {}
+    
+    local foundMobs = {}
+    -- Tìm trong workspace.mod hoặc workspace.Mob
+    local mobFolder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
+    
+    for _, v in pairs(mobFolder:GetChildren()) do
+        if v:FindFirstChild("Humanoid") and v.Name ~= Player.Name then
+            if not table.find(foundMobs, v.Name) then table.insert(foundMobs, v.Name) end
+        end
+    end
+    if #foundMobs == 0 then foundMobs = {"Bandit", "Boss"} end -- Fallback
+    
+    for _, mob in ipairs(foundMobs) do
+        local btn = Instance.new("TextButton", MobScroll)
+        btn.Size = UDim2.new(1, 0, 0, 25)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.Text = "☐ " .. mob
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.Font = Enum.Font.Gotham
         
-        -- 1. XỬ LÝ AUTO EQUIP (Cầm vũ khí)
+        local isSel = false
+        btn.MouseButton1Click:Connect(function()
+            isSel = not isSel
+            btn.Text = isSel and "☑ " .. mob or "☐ " .. mob
+            btn.TextColor3 = isSel and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(200, 200, 200)
+            if isSel then
+                table.insert(_G.SelectedMobs, mob)
+            else
+                for i, v in ipairs(_G.SelectedMobs) do if v == mob then table.remove(_G.SelectedMobs, i) break end end
+            end
+        end)
+    end
+    MobScroll.CanvasSize = UDim2.new(0, 0, 0, #foundMobs * 25)
+end
+RefreshMobsBtn.MouseButton1Click:Connect(LoadMobs)
+LoadMobs()
+
+-- Cột Phải: Các Nút Cài Đặt Farm
+local function CreateToggle(parent, yPos, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, 0, 0, 30)
+    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = text .. ": TẮT"
+    btn.Font = Enum.Font.GothamBold
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = state and text .. ": BẬT" or text .. ": TẮT"
+        btn.BackgroundColor3 = state and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(150, 40, 40)
+        callback(state)
+    end)
+    return btn
+end
+
+-- Chuyển đổi vũ khí xoay vòng
+local WepBtn = Instance.new("TextButton", FarmRightCol)
+WepBtn.Size = UDim2.new(1, 0, 0, 30)
+WepBtn.Position = UDim2.new(0, 0, 0, 0)
+WepBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+WepBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+WepBtn.Text = "Vũ khí: Melee"
+WepBtn.Font = Enum.Font.Gotham
+
+local weps = {"Melee", "Sword", "Fruit", "Gun"}
+local wepIdx = 1
+WepBtn.MouseButton1Click:Connect(function()
+    wepIdx = wepIdx + 1
+    if wepIdx > #weps then wepIdx = 1 end
+    _G.WeaponType = weps[wepIdx]
+    WepBtn.Text = "Vũ khí: " .. _G.WeaponType
+end)
+
+CreateToggle(FarmRightCol, 35, "Auto Equip", function(v) _G.AutoEquip = v end)
+CreateToggle(FarmRightCol, 80, "Auto Farm", function(v) _G.AutoFarm = v end)
+CreateToggle(FarmRightCol, 115, "Auto Attack", function(v) _G.AutoAttack = v end)
+
+-- ==========================================
+-- XÂY DỰNG TAB 2: TELEPORT (MAP, QUEST, NPC)
+-- ==========================================
+local TeleportTab = CreateTabButton("Teleport", false)
+
+local function CreateTPSection(yPos, titleText, items)
+    local Title = Instance.new("TextLabel", TeleportTab)
+    Title.Size = UDim2.new(1, -20, 0, 20)
+    Title.Position = UDim2.new(0, 10, 0, yPos)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = Color3.fromRGB(0, 150, 255)
+    Title.Text = titleText
+    Title.Font = Enum.Font.GothamBold
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local DropBtn = Instance.new("TextButton", TeleportTab)
+    DropBtn.Size = UDim2.new(0.6, 0, 0, 30)
+    DropBtn.Position = UDim2.new(0, 10, 0, yPos + 25)
+    DropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    DropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropBtn.Text = items[1]
+    DropBtn.Font = Enum.Font.Gotham
+    
+    local idx = 1
+    DropBtn.MouseButton1Click:Connect(function()
+        idx = idx + 1
+        if idx > #items then idx = 1 end
+        DropBtn.Text = items[idx]
+    end)
+    
+    local TpBtn = Instance.new("TextButton", TeleportTab)
+    TpBtn.Size = UDim2.new(0.35, 0, 0, 30)
+    TpBtn.Position = UDim2.new(0.65, 0, 0, yPos + 25)
+    TpBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+    TpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TpBtn.Text = "Bay Tới"
+    TpBtn.Font = Enum.Font.GothamBold
+    TpBtn.MouseButton1Click:Connect(function()
+        -- Gắn code CFrame dịch chuyển tới items[idx] tại đây
+        print("Teleporting to: " .. DropBtn.Text)
+    end)
+end
+
+-- Chú ý: Bấm vào tên để đổi địa điểm, sau đó bấm "Bay Tới"
+CreateTPSection(10, "1. Teleport Islands (Đảo)", {"Starter Island", "Jungle", "Desert", "Snow"})
+CreateTPSection(80, "2. Teleport Quest NPC (Nhận NV)", {"Quest Lv1", "Quest Lv50", "Quest Lv100"})
+CreateTPSection(150, "3. Teleport Normal NPC", {"Sword Seller", "Fruit Dealer", "Blacksmith"})
+
+-- ==========================================
+-- XÂY DỰNG TAB 3: AUTO SKILLS
+-- ==========================================
+local SkillTab = CreateTabButton("Auto Skills", false)
+
+local SkillListLayout = Instance.new("UIListLayout", SkillTab)
+SkillListLayout.Padding = UDim.new(0, 10)
+Instance.new("UIPadding", SkillTab).PaddingTop = UDim.new(0, 10)
+
+CreateToggle(SkillTab, 0, "Dùng Skill [Z]", function(v) _G.AutoZ = v end)
+CreateToggle(SkillTab, 0, "Dùng Skill [X]", function(v) _G.AutoX = v end)
+CreateToggle(SkillTab, 0, "Dùng Skill [C]", function(v) _G.AutoC = v end)
+CreateToggle(SkillTab, 0, "Dùng Skill [V]", function(v) _G.AutoV = v end)
+
+-- ==========================================
+-- VÒNG LẶP CHẠY CHỨC NĂNG (MAIN LOOP)
+-- ==========================================
+task.spawn(function()
+    while task.wait(0.1) do
+        
+        -- 1. Tự động cầm vũ khí
         if _G.AutoEquip and Player.Character then
             for _, tool in pairs(Player.Backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    -- Kiểm tra loại vũ khí dựa trên ToolTip hoặc tên (Tùy chỉnh theo game)
-                    if tool.ToolTip == _G.WeaponType or string.match(tool.Name, _G.WeaponType) then
-                        Player.Character.Humanoid:EquipTool(tool)
-                    end
+                if tool:IsA("Tool") and (tool.ToolTip == _G.WeaponType or string.match(tool.Name, _G.WeaponType)) then
+                    Player.Character.Humanoid:EquipTool(tool)
                 end
             end
         end
 
-        -- 2. XỬ LÝ AUTO ATTACK
+        -- 2. Tự động đánh (Click)
         if _G.AutoAttack then
             VirtualUser:CaptureController()
             VirtualUser:ClickButton1(Vector2.new(0, 0))
-            
-            -- Ép vũ khí đang cầm trên tay tung đòn
-            local char = Player.Character
-            if char then
-                local equippedTool = char:FindFirstChildOfClass("Tool")
-                if equippedTool then equippedTool:Activate() end
+            if Player.Character then
+                local tool = Player.Character:FindFirstChildOfClass("Tool")
+                if tool then tool:Activate() end
             end
         end
 
-        -- 3. XỬ LÝ AUTO FARM (Teleport tới quái)
+        -- 3. Tự động xả Skill
+        if _G.AutoFarm or _G.AutoAttack then
+            if _G.AutoZ then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game) task.wait(0.05) end
+            if _G.AutoX then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game) task.wait(0.05) end
+            if _G.AutoC then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game) task.wait(0.05) end
+            if _G.AutoV then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game) task.wait(0.05) end
+        end
+
+        -- 4. Logic Auto Farm (Tìm quái trong folder mod và bay tới)
         if _G.AutoFarm and #_G.SelectedMobs > 0 then
+            local mobFolder = workspace:FindFirstChild("mod") or workspace:FindFirstChild("Mob") or workspace
             for _, mobName in pairs(_G.SelectedMobs) do
-                local targetMob = workspace:FindFirstChild(mobName)
-                if targetMob and targetMob:FindFirstChild("HumanoidRootPart") and targetMob.Humanoid.Health > 0 then
-                    -- Dịch chuyển ra sau lưng quái (ở trên cao một chút để tránh bị đánh trúng)
-                    Player.Character.HumanoidRootPart.CFrame = targetMob.HumanoidRootPart.CFrame * CFrame.new(0, 5, 3)
-                    break -- Đánh xong con này mới sang con khác
+                local target = mobFolder:FindFirstChild(mobName)
+                if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+                    Player.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0, 5, 3)
+                    break
                 end
             end
         end
-
-        -- 4. XỬ LÝ AUTO SKILL
-        if _G.AutoFarm or _G.AutoAttack then
-            if _G.AutoZ then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game) task.wait(0.1) end
-            if _G.AutoX then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game) task.wait(0.1) end
-            if _G.AutoC then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game) task.wait(0.1) end
-            if _G.AutoV then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game) task.wait(0.1) end
-            if _G.AutoB then VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.B, false, game) task.wait(0.1) end
-        end
-
+        
     end
 end)
